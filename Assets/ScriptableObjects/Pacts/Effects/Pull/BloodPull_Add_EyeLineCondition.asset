@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a52dc7802964f06830447f9efd810ae, type: 3}
+  m_Name: BloodPull_Add_EyeLineCondition
+  m_EditorClassIdentifier: Assembly-CSharp::PoolRequiredAnyTagModifierEffect
+  description: Eyespacts are considered bloodpacts now
+  targetPoolTags:
+  - {fileID: 11400000, guid: c161fc394e08453f9711401e6edfdd7f, type: 2}
+  - {fileID: 11400000, guid: f749015741374c9cb5a1a22e8be7b8e7, type: 2}
+  requiredAnyTagsToAdd:
+  - {fileID: 11400000, guid: 158f0404c9014c5ca1b604db959e0d83, type: 2}

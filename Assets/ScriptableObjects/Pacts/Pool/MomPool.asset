@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b0282bf7a394435b7ed82dbd0d42646, type: 3}
+  m_Name: MomPool
+  m_EditorClassIdentifier: Assembly-CSharp::PactPoolSO
+  lineScrollIcon:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  pacts:
+  - {fileID: 11400000, guid: 590465c366a04d245972c2a818a467b7, type: 2}
+  - {fileID: 11400000, guid: 27e4142d16e47aa49959b692af024e92, type: 2}

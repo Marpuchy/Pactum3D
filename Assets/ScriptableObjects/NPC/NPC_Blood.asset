@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d8ac723784e94d5f86f58b3722d73382, type: 3}
+  m_Name: NPC_Blood
+  m_EditorClassIdentifier: Assembly-CSharp::NpcDefinitionSO
+  npcId: npc_001
+  displayName: Azathoth
+  inGameSprite: {fileID: 755316773175995059, guid: 661f8aab521792240af318c5d019ff70, type: 3}
+  pactCanvasSprite: {fileID: -5822661371218445329, guid: 97c16429dc4eec9439e7c5a50febc265, type: 3}
+  sharedPrefab: {fileID: 1424300930386084912, guid: 0e6c224571b7b9982894586e661e1ab1, type: 3}
+  generalPactPool: {fileID: 11400000, guid: 9ee17d84f4f961f568fb12ddad52583f, type: 2}
+  ownPactPool: {fileID: 11400000, guid: 3b33ed92c692e8240871fd03a333545e, type: 2}
+  extraPactPulls: []
+  legacyPactPools:
+  - {fileID: 11400000, guid: 3b33ed92c692e8240871fd03a333545e, type: 2}
+  - {fileID: 11400000, guid: 9ee17d84f4f961f568fb12ddad52583f, type: 2}
+  tags:
+  - {fileID: 11400000, guid: e3897b897fd642049bed8d59f245034c, type: 2}

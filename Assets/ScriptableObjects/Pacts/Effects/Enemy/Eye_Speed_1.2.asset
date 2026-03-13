@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4abd55497a864f7f8f351cf4591a60ff, type: 3}
+  m_Name: Eye_Speed_1.2
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyStatModifierEffect
+  description: Eyes are 20% faster
+  priority: 0
+  statType: 6
+  operation: 1
+  amount: 1.2
+  requiredTags:
+  - {fileID: 11400000, guid: 979bb06e3fdbf734791de849f7da8739, type: 2}

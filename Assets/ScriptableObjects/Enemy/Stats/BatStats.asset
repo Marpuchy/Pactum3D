@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 524cc92980e582605b9256a8311c356a, type: 3}
+  m_Name: BatStats
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterStats
+  saveId: 102
+  maxHealth: 70
+  shieldArmor: 1
+  attackDamage: 5
+  attackSpeed: 1
+  attackLocktime: 0.2
+  attackRange: 1
+  detectionRange: 100
+  hitReactThreshold: 5
+  dashSpeed: 14
+  dashDuration: 0.12
+  dashCooldown: 0.6
+  maxSpeed: 4
+  acceleration: 60
+  deceleration: 70
+  turnAcceleration: 90

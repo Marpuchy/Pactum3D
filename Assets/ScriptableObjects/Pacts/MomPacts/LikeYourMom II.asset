@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4042064468748cce09a5f2b933c0d3c8, type: 3}
+  m_Name: LikeYourMom II
+  m_EditorClassIdentifier: Assembly-CSharp::PactDefinition
+  saveId: pact_015
+  title: Like Your Mom
+  description: .. that I need two pacts.
+  icon: {fileID: 0}
+  line: {fileID: 11400000, guid: d67531a254d4da340aab615cf4f70806, type: 2}
+  lineTier: 2
+  tags:
+  - {fileID: 11400000, guid: ef57f1e6544442a4b81d07936c722505, type: 2}
+  - {fileID: 11400000, guid: e0e880977ba841768ab618889bfe6ea0, type: 2}
+  - {fileID: 11400000, guid: 7ff05df74e764524843db758d4cb96df, type: 2}
+  - {fileID: 11400000, guid: 7969d88a449c4d79a500e9dc390a7773, type: 2}
+  requiredPreviousPact: {fileID: 11400000, guid: 590465c366a04d245972c2a818a467b7, type: 2}
+  effects:
+  - {fileID: 11400000, guid: 68e68731aaf7c5d40890985add7b100e, type: 2}
+  - {fileID: 11400000, guid: 0bb652dfbb8e2594295b757cce50125a, type: 2}
+  positiveEffects: []
+  negativeEffects: []
+  positiveRuleEffects: []
+  negativeRuleEffects: []
+  positiveEnemyEffects: []
+  negativeEnemyEffects: []
+  positiveLootEffects: []
+  negativeLootEffects: []
+  positiveRoomEffects: []
+  negativeRoomEffects: []

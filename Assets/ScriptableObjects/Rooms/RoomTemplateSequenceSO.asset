@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 199179558eb4f767588517a004c76e63, type: 3}
+  m_Name: RoomTemplateSequenceSO
+  m_EditorClassIdentifier: Assembly-CSharp::RoomTemplateSequenceSO
+  roomSequence:
+  - {fileID: 11400000, guid: 75a206c8881d2cbb2b053e2b5dadb6f1, type: 2}
+  - {fileID: 11400000, guid: 6ac9946a13bf0464f975d9236cad3f5d, type: 2}
+  - {fileID: 11400000, guid: 6609e2d2c32712f4085f013a5f027fda, type: 2}
+  - {fileID: 11400000, guid: 511ad926bb0d6244294375f4ae8059af, type: 2}
+  roomsPerTemplate: 3
+  npcRoomTemplate: {fileID: 11400000, guid: eb1bb2a9c1f2e7431a53466b4df25f67, type: 2}
+  npcRoomFrequency: 3

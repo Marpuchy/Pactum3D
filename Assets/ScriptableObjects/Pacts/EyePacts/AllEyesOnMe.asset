@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4042064468748cce09a5f2b933c0d3c8, type: 3}
+  m_Name: AllEyesOnMe
+  m_EditorClassIdentifier: Assembly-CSharp::PactDefinition
+  saveId: pact_003
+  title: All Eyes On Me
+  description: 
+  icon: {fileID: 0}
+  line: {fileID: 11400000, guid: d4472242d28867344b31f03c7ccfbba2, type: 2}
+  legacyLineTier: 1
+  tags:
+  - {fileID: 11400000, guid: ef57f1e6544442a4b81d07936c722505, type: 2}
+  - {fileID: 11400000, guid: 158f0404c9014c5ca1b604db959e0d83, type: 2}
+  - {fileID: 11400000, guid: 053e49b0dff14ff38d336393313396bd, type: 2}
+  - {fileID: 11400000, guid: 1a2f8f41458f4348be5fc51df09d7a6c, type: 2}
+  requiredPreviousPact: {fileID: 0}
+  effects:
+  - {fileID: 11400000, guid: c2a277d9fc6e00eeaa482ac25aceaa69, type: 2}
+  - {fileID: 11400000, guid: 4f97c8acbb7c8764c89f970a2a849bb4, type: 2}

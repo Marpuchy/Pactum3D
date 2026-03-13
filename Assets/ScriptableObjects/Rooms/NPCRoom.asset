@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62172504515e8fe08ba6399365df7832, type: 3}
+  m_Name: NPCRoom
+  m_EditorClassIdentifier: Assembly-CSharp::RoomTemplate
+  minSize: {x: 10, y: 10}
+  maxSize: {x: 10, y: 10}
+  minDoors: 4
+  maxDoors: 4
+  doorUp:
+    closed: {fileID: 0}
+    open: {fileID: 0}
+  doorDown:
+    closed: {fileID: 0}
+    open: {fileID: 0}
+  doorLeft:
+    closed: {fileID: 0}
+    open: {fileID: 0}
+  doorRight:
+    closed: {fileID: 0}
+    open: {fileID: 0}
+  itemsToSpawn: 0
+  itemRarities: []
+  coinsToSpawn: 0
+  coinItemData: {fileID: 0}
+  coinPrefab: {fileID: 0}
+  minCoinsPerSpawn: 1
+  maxCoinsPerSpawn: 1
+  chestToSpawn: 0
+  chestPrefab: {fileID: 0}
+  chestRarities: []
+  pactNpcSpawns:
+  - npcDefinition: {fileID: 11400000, guid: acb490a78cbde4745966e7465b73605f, type: 2}
+    legacyNpcPrefab: {fileID: 1424300930386084912, guid: 0e6c224571b7b9982894586e661e1ab1, type: 3}
+    isInRoom: 1
+    spawnRate: 0.5
+  - npcDefinition: {fileID: 11400000, guid: 45430b02a7b27364a9a306b1fab65474, type: 2}
+    legacyNpcPrefab: {fileID: 1424300930386084912, guid: 3b7329699de00a548a68522fe84b35a7, type: 3}
+    isInRoom: 1
+    spawnRate: 0.5
+  alwaysSpawnFirstPactNpc: 0
+  optionalPactNpcSpawnChance: 1
+  otherNpcSpawns:
+  - npcDefinition: {fileID: 11400000, guid: c3229ba0a4ba4dd8af9d6884189f95d4, type: 2}
+    legacyNpcPrefab: {fileID: 1424300930386084912, guid: fe350babd5f36a147857dc9fe6933575, type: 3}
+    isInRoom: 1
+    spawnRate: 1
+  otherNpcSpawnChance: 0.35
+  itemSpawns: []
+  minEnemies: 0
+  maxEnemies: 0
+  enemySpawns: []
+  spawnPointTile: {fileID: 11400000, guid: 0281f1cb84735ba4d8167faf976d0926, type: 2}
+  floorTile: {fileID: 11400000, guid: b7c9d02a702c96d49aba16428b6f98b7, type: 2}
+  wallTile: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
+  wallTop: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
+  wallBottom: {fileID: 11400000, guid: 4254764f0d521f7419cdaabe4aa316b3, type: 2}
+  wallLeft: {fileID: 11400000, guid: 30499ac6d0da6624d8a7c663e6896e24, type: 2}
+  wallRight: {fileID: 11400000, guid: 0ca1f626572c28146b285acdee942329, type: 2}
+  wallTopLeft: {fileID: 11400000, guid: 828173dd6c9332c4d80217e31b99d596, type: 2}
+  wallTopRight: {fileID: 11400000, guid: 850c6cc86e1f39745b1ef52b557e96d6, type: 2}
+  wallBottomLeft: {fileID: 11400000, guid: 78a0234c658ea9a4ea6bf6071babbd52, type: 2}
+  wallBottomRight: {fileID: 11400000, guid: 93d4ee7918b9ca543b60f5cdd235c8e1, type: 2}
+  specialTilePercentage: 0
+  specialTiles: []
+  roomTags: []
+  lootTags: []
+  itemTag: {fileID: 0}
+  coinTag: {fileID: 0}

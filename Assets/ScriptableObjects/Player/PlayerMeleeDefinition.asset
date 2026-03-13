@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2c29a286e064ef39d04a3a4f2b3c650, type: 3}
+  m_Name: PlayerMeleeDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerDefinitionSO
+  playerId: player_001
+  displayName: Player Melee
+  prefab: {fileID: 8312716341548270105, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+  stats: {fileID: 11400000, guid: c2f8e7642c8849b5be619f57991be7a5, type: 2}
+  playerTag: {fileID: 11400000, guid: 732fdaaa657a67e81abb0207c2a1bf4f, type: 2}
+  movementTags:
+  - {fileID: 11400000, guid: 2fde2e746a13dd245b8e32a74b9298e4, type: 2}
+  typeTags:
+  - {fileID: 11400000, guid: 83f5460dd7c64adf9dd503ffbb56de9a, type: 2}
+  legacyTags: []

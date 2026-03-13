@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff16da0179f9499c9f1ac47e8e124b19, type: 3}
+  m_Name: E_Spawn_OnlyEyes
+  m_EditorClassIdentifier: Assembly-CSharp::EnemySpawnFilterEffect
+  description: Now only Eyes Will Spawn
+  priority: 0
+  requireAllTags: []
+  requireAnyTags:
+  - {fileID: 11400000, guid: 979bb06e3fdbf734791de849f7da8739, type: 2}
+  blockedAnyTags: []
+  allowedEnemyDefinitions:
+  - {fileID: 11400000, guid: db6c4a89968202340a1a159af3338c16, type: 2}
+  blockedEnemyDefinitions: []
+  allowedEnemyPrefabs: []
+  blockedEnemyPrefabs: []

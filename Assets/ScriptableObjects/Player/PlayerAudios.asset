@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67349d2f91076c7449f4b05abc0013fd, type: 3}
+  m_Name: PlayerAudios
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerAudios
+  stepsAudio: {fileID: 8300000, guid: 062219ab52a75384094a69e5fefc60ad, type: 3}
+  stepsVolume: 0.351
+  attackAudio: {fileID: 8300000, guid: 9e2d4b97f83583fa9b35e312f5abe1be, type: 3}

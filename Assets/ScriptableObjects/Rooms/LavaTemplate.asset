@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62172504515e8fe08ba6399365df7832, type: 3}
+  m_Name: LavaTemplate
+  m_EditorClassIdentifier: Assembly-CSharp::RoomTemplate
+  minSize: {x: 10, y: 10}
+  maxSize: {x: 10, y: 10}
+  minDoors: 3
+  maxDoors: 3
+  itemsToSpawn: 0
+  itemRarities: []
+  chestToSpawn: 0
+  chestPrefab: {fileID: 0}
+  chestRarities: []
+  npcSpawns: []
+  itemSpawns: []
+  minEnemies: 0
+  maxEnemies: 0
+  enemySpawns: []
+  spawnPointTile: {fileID: 11400000, guid: 8fb3132b7f9957c4388728e22cf25651, type: 2}
+  floorTile: {fileID: 11400000, guid: 0281f1cb84735ba4d8167faf976d0926, type: 2}
+  wallTile: {fileID: 11400000, guid: 335766fba544c5746b208b1b34f1d12d, type: 2}
+  specialTilePercentage: 1
+  specialTiles:
+  - type: 5
+    specialTilePrefab: {fileID: 4905680764639183262, guid: e261e70d21dc8604fb5ca22504e97bc3, type: 3}
+    spawnPercentage: 1

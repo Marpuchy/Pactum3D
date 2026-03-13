@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69f16517b475f8c71b776c6821eb9ba6, type: 3}
+  m_Name: BaseScythe
+  m_EditorClassIdentifier: Assembly-CSharp::ItemDataSO
+  id: weapon_004
+  displayName: Scythe
+  icon: {fileID: -5850402499806403312, guid: 4d453cec04e79de7caa62429c48f9ddc, type: 3}
+  description: Just farm
+  itemType: 0
+  weaponStats: {fileID: 11400000, guid: cc04cfe944f94c8578a99f974cc47b1f, type: 2}
+  armorStats: {fileID: 0}
+  consumableStats: {fileID: 0}
+  rarity: {fileID: 11400000, guid: 72cd6a5dd635cc0429acff5dc5d3d887, type: 2}
+  stackable: 0
+  isCurrency: 0
+  baseSellValue: 5
+  useSound: {fileID: 8300000, guid: 5f43aedc5bfb3b4a1b049a81a91557f3, type: 3}
+  volumeUse: 1
+  pickSound: {fileID: 8300000, guid: 5f43aedc5bfb3b4a1b049a81a91557f3, type: 3}
+  volumePick: 1
+  modifiers: []

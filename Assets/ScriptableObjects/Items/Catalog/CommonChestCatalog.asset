@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4d9c589782d042a3a7a99e5277d412d, type: 3}
+  m_Name: CommonChestCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::LootTableSO
+  inventoryPrototype: {fileID: 11400000, guid: afed91b7c11f8e8b2b737cd9713dc19a, type: 2}
+  lootTags: []
+  itemTag: {fileID: 0}
+  coinTag: {fileID: 0}
+  entries:
+  - item: {fileID: 11400000, guid: 32771de2e1d43c2728fa91345b4885a8, type: 2}
+    minAmount: 1
+    maxAmount: 1
+    probability: 0.2
+  - item: {fileID: 11400000, guid: dbd9e614bb5cdef4dac92950355e7688, type: 2}
+    minAmount: 1
+    maxAmount: 1
+    probability: 0.25
+  - item: {fileID: 11400000, guid: 4cf52c28375fc16fc9b8762b4610ffd6, type: 2}
+    minAmount: 1
+    maxAmount: 1
+    probability: 0.25
+  - item: {fileID: 11400000, guid: 7653b0a541e82669ba255ed75111e49e, type: 2}
+    minAmount: 1
+    maxAmount: 3
+    probability: 1
+  - item: {fileID: 11400000, guid: 98d0655c41485cc40bc1faa2f783e0b2, type: 2}
+    minAmount: 1
+    maxAmount: 1
+    probability: 0.505
+  - item: {fileID: 11400000, guid: e99dab8cde96df245981b34521c9d0e4, type: 2}
+    minAmount: 1
+    maxAmount: 1
+    probability: 0.277
+  - item: {fileID: 11400000, guid: 02d95ccb56a80eb48a518d279652eb7c, type: 2}
+    minAmount: 1
+    maxAmount: 1
+    probability: 0.01

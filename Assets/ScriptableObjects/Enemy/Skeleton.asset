@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c90bc139a0477d1478124ec480a3fec6, type: 3}
+  m_Name: Skeleton
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDefinitionSO
+  enemyId: enemy_001
+  displayName: Skeleton
+  prefab: {fileID: 5914333046785950872, guid: ab8f9d2dda7c32082a4a5b15579e2bdc, type: 3}
+  enemyTag: {fileID: 11400000, guid: 4f3fc5ab05d9ab7afbdc30086661a0ab, type: 2}
+  movementTags:
+  - {fileID: 11400000, guid: 2fde2e746a13dd245b8e32a74b9298e4, type: 2}
+  typeTags:
+  - {fileID: 11400000, guid: de1201257bc94ae4b91530b672293bcd, type: 2}
+  legacyTags: []
