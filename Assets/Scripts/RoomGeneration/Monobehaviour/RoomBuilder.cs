@@ -1,13 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using NavMeshPlus.Components;
-using NavMeshPlus.Extensions;
 using SaveSystem;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
 using UnityEngine.Tilemaps;
+using Unity.AI.Navigation;
 using Random = UnityEngine.Random;
 
 public class RoomBuilder : MonoBehaviour
@@ -15,6 +15,7 @@ public class RoomBuilder : MonoBehaviour
     private const string HumanoidAgentTypeName = "Humanoid";
     private const string FlyingAgentTypeName = "Flying";
     private const float AgentRebindMaxDistance = 128f;
+    private const float DefaultSpawnedContentHeightOffset = 0.06f;
 
     private static readonly FieldInfo NavMeshModifierAffectedAgentsField =
         typeof(NavMeshModifier).GetField("m_AffectedAgents", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -22,6 +23,9 @@ public class RoomBuilder : MonoBehaviour
     public static RoomBuilder Current { get; private set; }
 
     [SerializeField] private Tilemap tilemap;
+    [SerializeField] private Room2_5DTilemapLayers layeredTilemaps;
+    [SerializeField] private RoomWorldSpaceSettings worldSpaceSettings;
+    [SerializeField] private Room3DGeometryBuilder room3DGeometryBuilder;
     [SerializeField] private GameObject doorPrefab;
     [SerializeField] private RoomSpawnEvent onRoomSpawnEvent;
     [SerializeField] private EnemyDeathEvent enemyDeathEvent;
@@ -29,6 +33,12 @@ public class RoomBuilder : MonoBehaviour
     [SerializeField] private NavMeshSurface navMeshSurface;
     [SerializeField] private List<NavMeshSurface> navMeshSurfaces = new List<NavMeshSurface>();
     [SerializeField] private RoomTemplateSequenceSO roomSequenceConfig;
+
+    [Header("Runtime Generation")]
+    [SerializeField] private bool usePrototypeRoom = false;
+    [SerializeField] private bool spawnEnemies = false;
+    [SerializeField] private Vector2Int prototypeWalkableSize = new Vector2Int(6, 6);
+    [SerializeField, Min(1)] private int prototypeWallThickness = 1;
 
     [SerializeField] private AudioClip doorClip;
 
@@ -46,16 +56,41 @@ public class RoomBuilder : MonoBehaviour
     private int currentRoomSeed;
     private bool isCurrentNpcRoom;
     private NavMeshModifier roomWallsNavMeshModifier;
+    private Room currentRoom;
+    private Bounds currentRoomWorldBounds;
+    private int prototypeRoomNumber;
 
-    public int CurrentRoomNumber => _templateSelector != null ? _templateSelector.CurrentRoomNumber : 0;
+    public int CurrentRoomNumber => usePrototypeRoom
+        ? Mathf.Max(1, prototypeRoomNumber)
+        : (_templateSelector != null ? _templateSelector.CurrentRoomNumber : 0);
     public int CurrentRunSeed => runSeed;
     public int CurrentRoomSeed => currentRoomSeed;
     public bool IsCurrentNpcRoom => isCurrentNpcRoom;
     public RoomSpawnEvent RoomSpawnEvent => onRoomSpawnEvent;
+    public Bounds CurrentRoomWorldBounds => currentRoomWorldBounds;
 
     private void Awake()
     {
         Current = this;
+        usePrototypeRoom = false;
+        if (layeredTilemaps == null)
+            layeredTilemaps = GetComponentInChildren<Room2_5DTilemapLayers>(true);
+        if (layeredTilemaps == null)
+            layeredTilemaps = FindFirstObjectByType<Room2_5DTilemapLayers>();
+        if (worldSpaceSettings == null)
+            worldSpaceSettings = GetComponentInChildren<RoomWorldSpaceSettings>(true);
+        if (worldSpaceSettings == null)
+            worldSpaceSettings = FindFirstObjectByType<RoomWorldSpaceSettings>();
+        if (worldSpaceSettings == null)
+            worldSpaceSettings = gameObject.AddComponent<RoomWorldSpaceSettings>();
+        worldSpaceSettings.ConfigureProjection(RoomProjectionMode.XZ, Vector3.zero, 0f);
+        if (room3DGeometryBuilder == null)
+            room3DGeometryBuilder = GetComponentInChildren<Room3DGeometryBuilder>(true);
+        if (room3DGeometryBuilder == null)
+            room3DGeometryBuilder = gameObject.AddComponent<Room3DGeometryBuilder>();
+
+        layeredTilemaps?.ApplyRuntimeSetup();
+        AlignTilemapGridToWorldSpace();
         EnsureNavMeshAgentSurfaces();
         EnsureNavMeshWallBlockingConfiguration();
         _generator = new IsaacRoomGenerator();
@@ -84,6 +119,13 @@ public class RoomBuilder : MonoBehaviour
     }
     public void Build(Transform parent)
     {
+        if (usePrototypeRoom)
+        {
+            BuildPrototypeRoom(parent);
+            return;
+        }
+
+        layeredTilemaps?.ApplyRuntimeSetup();
         EnsureNavMeshAgentSurfaces();
         EnsureNavMeshWallBlockingConfiguration();
 
@@ -100,10 +142,84 @@ public class RoomBuilder : MonoBehaviour
         currentRoomSeed = BuildRoomSeed(runSeed, CurrentRoomNumber);
         
         _tileOccupancy = new TileOccupancy();
-        _painter = new TilemapPainter(tilemap, template);
-        _spawner = new SpecialTileSpawner(template);
+        _painter = new TilemapPainter(ResolveCollisionTilemap(), template, layeredTilemaps, doorPrefab);
+        _spawner = new SpecialTileSpawner(template, parent, worldSpaceSettings);
 
         StartCoroutine(BuildAndBakeRoutine(parent, template, currentRoomSeed));
+    }
+
+    private void BuildPrototypeRoom(Transform parent)
+    {
+        layeredTilemaps?.ApplyRuntimeSetup();
+
+        prototypeRoomNumber++;
+        isCurrentNpcRoom = false;
+        enemyCount = 0;
+        currentRoomSeed = BuildRoomSeed(runSeed, prototypeRoomNumber);
+        _tileOccupancy = new TileOccupancy();
+
+        StartCoroutine(BuildPrototypeRoomRoutine(parent, currentRoomSeed));
+    }
+
+    private IEnumerator BuildPrototypeRoomRoutine(Transform parent, int roomSeed)
+    {
+        RoomTemplate template = ResolvePrototypeTemplate();
+        if (template == null)
+        {
+            Debug.LogError("RoomBuilder: no prototype room template is available.", this);
+            yield break;
+        }
+
+        Random.State previousRandomState = Random.state;
+        Random.InitState(SanitizeSeed(roomSeed));
+        Room room = _generator.Generate(template);
+        Random.state = previousRandomState;
+
+        ConfigurePrototypeWorldOrigin(room);
+        currentRoom = room;
+        currentRoomWorldBounds = CalculateRoomWorldBounds(room);
+        _painter = new TilemapPainter(ResolveCollisionTilemap(), template, layeredTilemaps, doorPrefab);
+
+        ClearLegacyTilemaps();
+        AlignTilemapGridToWorldSpace();
+        ClearPrototypeRuntimeContainers(parent);
+        room3DGeometryBuilder?.Rebuild(room, parent);
+        _painter.Paint(room);
+
+        NavMeshSurface prototypeSurface = EnsurePrototypeNavMeshSurface(parent);
+        DisableLegacyNavMeshSurfacesForPrototype(parent);
+
+        Physics.SyncTransforms();
+        Physics2D.SyncTransforms();
+        yield return null;
+
+        List<NavMeshAgent> temporarilyDisabledAgents = DisableAgentsForNavMeshRebuild();
+        List<AsyncOperation> buildOperations = new List<AsyncOperation>(1);
+
+        if (prototypeSurface != null)
+        {
+            AsyncOperation operation = null;
+            if (prototypeSurface.navMeshData == null)
+            {
+                prototypeSurface.BuildNavMesh();
+            }
+            else
+            {
+                operation = prototypeSurface.UpdateNavMesh(prototypeSurface.navMeshData);
+            }
+
+            if (operation != null)
+                buildOperations.Add(operation);
+        }
+
+        while (HasPendingNavMeshBuild(buildOperations))
+            yield return null;
+
+        RestoreAgentsAfterNavMeshRebuild(temporarilyDisabledAgents);
+        yield return null;
+
+        RebindAllAgentsToCurrentNavMesh();
+        onRoomSpawnEvent?.Raise(ResolvePrototypeSpawnWorldPosition(room));
     }
 
     private IEnumerator BuildAndBakeRoutine(Transform parent, RoomTemplate template, int roomSeed)
@@ -118,6 +234,11 @@ public class RoomBuilder : MonoBehaviour
             // ===== TU CÓDIGO ORIGINAL (SIN CAMBIOS) =====
             Random.InitState(SanitizeSeed(roomSeed));
             room = _generator.Generate(template);
+            currentRoom = room;
+            currentRoomWorldBounds = CalculateRoomWorldBounds(room);
+            AlignTilemapGridToWorldSpace();
+            ClearLegacyTilemaps();
+            room3DGeometryBuilder?.Rebuild(room, parent);
             _painter.Paint(room);
             _spawner.Spawn(room);
 
@@ -134,13 +255,16 @@ public class RoomBuilder : MonoBehaviour
 
             context.Initialize(itemsRoot);
 
-
-            DeleteOldDoors(doorsRoot);
+            ClearContainerChildren(doorsRoot);
+            ClearContainerChildren(itemsRoot);
+            ClearContainerChildren(enemiesRoot);
+            ClearContainerChildren(chestsRoot);
+            ClearContainerChildren(npcsRoot);
             SpawnDoors(room, doorsRoot, template);
-            SpawnItemsInRoom(room, itemsRoot, template);
-            SpawnCoinsInRoom(room, itemsRoot, template);
             SpawnChests(room, chestsRoot);
             SpawnNpcs(room, npcsRoot);
+            SpawnItemsInRoom(room, itemsRoot, template);
+            SpawnCoinsInRoom(room, itemsRoot, template);
         }
         catch (Exception ex)
         {
@@ -169,6 +293,7 @@ public class RoomBuilder : MonoBehaviour
         RestrictAllNotWalkableModifiersToHumanoid();
 
         // ===== AQUÍ EMPIEZA LO NUEVO =====
+        Physics.SyncTransforms();
         Physics2D.SyncTransforms(); // fuerza actualización de transforms
         yield return null;          // espera a que Unity actualice colliders
 
@@ -181,7 +306,16 @@ public class RoomBuilder : MonoBehaviour
                 if (surface == null)
                     continue;
 
-                AsyncOperation operation = surface.BuildNavMeshAsync();
+                AsyncOperation operation = null;
+                if (surface.navMeshData == null)
+                {
+                    surface.BuildNavMesh();
+                }
+                else
+                {
+                    operation = surface.UpdateNavMesh(surface.navMeshData);
+                }
+
                 if (operation != null)
                     buildOperations.Add(operation);
             }
@@ -206,7 +340,11 @@ public class RoomBuilder : MonoBehaviour
             if (enemiesRoot == null)
                 enemiesRoot = GetOrCreateChildContainer(parent, "Enemies");
 
-            SpawnEnemies(room, enemiesRoot);
+            if (spawnEnemies)
+                SpawnEnemies(room, enemiesRoot);
+            else
+                enemyCount = 0;
+
             RebindAllAgentsToCurrentNavMesh();
         }
         catch (Exception ex)
@@ -217,11 +355,7 @@ public class RoomBuilder : MonoBehaviour
             enemyCount = 0;
         }
 
-        Vector3 spawnPos = new Vector3(
-            room.SpawnPosition.x + 0.5f,
-            room.SpawnPosition.y + 0.5f,
-            0f
-        );
+        Vector3 spawnPos = CreateCellPosition(room.SpawnPosition, orthogonalOffset: 0f);
 
         onRoomSpawnEvent?.Raise(spawnPos);
     }
@@ -231,10 +365,7 @@ public class RoomBuilder : MonoBehaviour
         if (room == null)
             return;
 
-        Vector3 fallbackSpawn = new Vector3(
-            room.SpawnPosition.x + 0.5f,
-            room.SpawnPosition.y + 0.5f,
-            0f);
+        Vector3 fallbackSpawn = CreateCellPosition(room.SpawnPosition, orthogonalOffset: 0f);
         onRoomSpawnEvent?.Raise(fallbackSpawn);
     }
 
@@ -262,22 +393,199 @@ public class RoomBuilder : MonoBehaviour
         return seed == 0    ? 1 : seed;
     }
 
-    private void EnsureNavMeshWallBlockingConfiguration()
+    private Room CreatePrototypeRoom()
     {
-        if (tilemap == null)
+        int totalWidth = Mathf.Max(3, prototypeWalkableSize.x);
+        int totalHeight = Mathf.Max(3, prototypeWalkableSize.y);
+        int wallThickness = Mathf.Max(1, prototypeWallThickness);
+        Room room = new Room(totalWidth, totalHeight);
+
+        for (int x = 0; x < totalWidth; x++)
+        {
+            for (int y = 0; y < totalHeight; y++)
+            {
+                bool isWall =
+                    x < wallThickness ||
+                    y < wallThickness ||
+                    x >= totalWidth - wallThickness ||
+                    y >= totalHeight - wallThickness;
+
+                room.Grid[x, y] = isWall ? CellType.Wall : CellType.Floor;
+            }
+        }
+
+        room.SpawnPosition = new Vector2Int(totalWidth / 2, totalHeight / 2);
+        return room;
+    }
+
+    private RoomTemplate ResolvePrototypeTemplate()
+    {
+        if (roomSequenceConfig != null && roomSequenceConfig.roomSequence != null)
+        {
+            for (int i = 0; i < roomSequenceConfig.roomSequence.Count; i++)
+            {
+                RoomTemplate template = roomSequenceConfig.roomSequence[i];
+                if (template != null)
+                    return template;
+            }
+        }
+
+        return null;
+    }
+
+    private void ConfigurePrototypeWorldOrigin(Room room)
+    {
+        if (worldSpaceSettings == null || room == null)
             return;
 
-        TilemapCollider2D tilemapCollider = tilemap.GetComponent<TilemapCollider2D>();
+        float halfWidth = room.Width * worldSpaceSettings.CellSize * 0.5f;
+        float halfHeight = room.Height * worldSpaceSettings.CellSize * 0.5f;
+        Vector3 centeredOrigin = new Vector3(-halfWidth, 0f, -halfHeight);
+        worldSpaceSettings.ConfigureProjection(RoomProjectionMode.XZ, centeredOrigin, 0f);
+    }
+
+    private void AlignTilemapGridToWorldSpace()
+    {
+        if (worldSpaceSettings == null)
+            return;
+
+        Tilemap referenceTilemap = ResolveCollisionTilemap();
+        if (referenceTilemap == null || referenceTilemap.layoutGrid == null)
+            return;
+
+        Transform gridTransform = referenceTilemap.layoutGrid.transform;
+        if (gridTransform == null)
+            return;
+
+        if (worldSpaceSettings.UsesXZPlane)
+        {
+            Vector3 position = worldSpaceSettings.Origin;
+            position.y += 0.01f;
+            gridTransform.position = position;
+            gridTransform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            return;
+        }
+
+        gridTransform.position = worldSpaceSettings.Origin;
+        gridTransform.rotation = Quaternion.identity;
+    }
+
+    private Vector3 ResolvePrototypeSpawnWorldPosition(Room room)
+    {
+        if (room == null)
+            return Vector3.zero;
+
+        if (worldSpaceSettings != null)
+            return worldSpaceSettings.GridRectCenterToWorld(room.Width, room.Height);
+
+        return new Vector3(room.Width * 0.5f, 0f, room.Height * 0.5f);
+    }
+
+    private void ClearLegacyTilemaps()
+    {
+        HashSet<Tilemap> unique = new HashSet<Tilemap>();
+
+        if (tilemap != null)
+            unique.Add(tilemap);
+
+        if (layeredTilemaps != null)
+        {
+            foreach (Tilemap configuredTilemap in layeredTilemaps.EnumerateConfiguredTilemaps())
+            {
+                if (configuredTilemap != null)
+                    unique.Add(configuredTilemap);
+            }
+        }
+
+        foreach (Tilemap configuredTilemap in unique)
+            configuredTilemap.ClearAllTiles();
+    }
+
+    private void ClearPrototypeRuntimeContainers(Transform parent)
+    {
+        if (parent == null)
+            return;
+
+        ClearContainerChildren(parent.Find("Doors"));
+        ClearContainerChildren(parent.Find("Items"));
+        ClearContainerChildren(parent.Find("Enemies"));
+        ClearContainerChildren(parent.Find("Chests"));
+        ClearContainerChildren(parent.Find("NPCs"));
+        ClearContainerChildren(parent.Find("SpecialTiles"));
+    }
+
+    private NavMeshSurface EnsurePrototypeNavMeshSurface(Transform roomRoot)
+    {
+        if (roomRoot == null)
+            return null;
+
+        NavMeshSurface prototypeSurface = roomRoot.GetComponent<NavMeshSurface>();
+        if (prototypeSurface == null)
+            prototypeSurface = roomRoot.gameObject.AddComponent<NavMeshSurface>();
+
+        if (TryGetAgentTypeId(HumanoidAgentTypeName, out int humanoidAgentTypeId))
+            prototypeSurface.agentTypeID = humanoidAgentTypeId;
+
+        prototypeSurface.collectObjects = CollectObjects.Children;
+        prototypeSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+        prototypeSurface.layerMask = ~0;
+        prototypeSurface.defaultArea = 0;
+        prototypeSurface.ignoreNavMeshAgent = true;
+        prototypeSurface.ignoreNavMeshObstacle = true;
+        prototypeSurface.overrideTileSize = true;
+        prototypeSurface.tileSize = 64;
+        prototypeSurface.overrideVoxelSize = true;
+        prototypeSurface.voxelSize = 0.1f;
+
+        return prototypeSurface;
+    }
+
+    private void DisableLegacyNavMeshSurfacesForPrototype(Transform prototypeRoot)
+    {
+        foreach (NavMeshSurface surface in ResolveNavMeshSurfaces())
+        {
+            if (surface == null)
+                continue;
+
+            bool belongsToPrototypeRoom =
+                prototypeRoot != null &&
+                (surface.transform == prototypeRoot || surface.transform.IsChildOf(prototypeRoot));
+
+            surface.enabled = belongsToPrototypeRoom;
+        }
+    }
+
+    private void EnsureNavMeshWallBlockingConfiguration()
+    {
+        if (Uses3DNavigation())
+        {
+            foreach (NavMeshSurface surface in ResolveNavMeshSurfaces())
+            {
+                if (surface == null)
+                    continue;
+
+                surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+                surface.collectObjects = CollectObjects.All;
+            }
+
+            return;
+        }
+
+        Tilemap navigationTilemap = ResolveCollisionTilemap();
+        if (navigationTilemap == null)
+            return;
+
+        TilemapCollider2D tilemapCollider = navigationTilemap.GetComponent<TilemapCollider2D>();
         if (tilemapCollider == null)
-            tilemapCollider = tilemap.gameObject.AddComponent<TilemapCollider2D>();
+            tilemapCollider = navigationTilemap.gameObject.AddComponent<TilemapCollider2D>();
 
-        CompositeCollider2D compositeCollider = tilemap.GetComponent<CompositeCollider2D>();
+        CompositeCollider2D compositeCollider = navigationTilemap.GetComponent<CompositeCollider2D>();
         if (compositeCollider == null)
-            compositeCollider = tilemap.gameObject.AddComponent<CompositeCollider2D>();
+            compositeCollider = navigationTilemap.gameObject.AddComponent<CompositeCollider2D>();
 
-        Rigidbody2D rigidbody2D = tilemap.GetComponent<Rigidbody2D>();
+        Rigidbody2D rigidbody2D = navigationTilemap.GetComponent<Rigidbody2D>();
         if (rigidbody2D == null)
-            rigidbody2D = tilemap.gameObject.AddComponent<Rigidbody2D>();
+            rigidbody2D = navigationTilemap.gameObject.AddComponent<Rigidbody2D>();
 
         rigidbody2D.bodyType = RigidbodyType2D.Kinematic;
         rigidbody2D.simulated = true;
@@ -285,9 +593,9 @@ public class RoomBuilder : MonoBehaviour
         // Keep per-tile wall colliders so NavMesh can carve only wall cells, not the whole room interior.
         tilemapCollider.compositeOperation = Collider2D.CompositeOperation.None;
 
-        NavMeshModifier tilemapModifier = tilemap.GetComponent<NavMeshModifier>();
+        NavMeshModifier tilemapModifier = navigationTilemap.GetComponent<NavMeshModifier>();
         if (tilemapModifier == null)
-            tilemapModifier = tilemap.gameObject.AddComponent<NavMeshModifier>();
+            tilemapModifier = navigationTilemap.gameObject.AddComponent<NavMeshModifier>();
 
         roomWallsNavMeshModifier = tilemapModifier;
         tilemapModifier.ignoreFromBuild = false;
@@ -358,7 +666,34 @@ public class RoomBuilder : MonoBehaviour
                 return surface;
         }
 
-        return null;
+        return CreateDefaultNavMeshSurface();
+    }
+
+    private NavMeshSurface CreateDefaultNavMeshSurface()
+    {
+        GameObject owner = gameObject;
+        NavMeshSurface createdSurface = owner.GetComponent<NavMeshSurface>();
+        if (createdSurface == null)
+            createdSurface = owner.AddComponent<NavMeshSurface>();
+
+        if (TryGetAgentTypeId(HumanoidAgentTypeName, out int humanoidAgentTypeId))
+            createdSurface.agentTypeID = humanoidAgentTypeId;
+
+        createdSurface.collectObjects = CollectObjects.All;
+        createdSurface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+        createdSurface.layerMask = ~0;
+        createdSurface.defaultArea = 0;
+        createdSurface.ignoreNavMeshAgent = true;
+        createdSurface.ignoreNavMeshObstacle = true;
+        createdSurface.overrideTileSize = true;
+        createdSurface.tileSize = 64;
+        createdSurface.overrideVoxelSize = true;
+        createdSurface.voxelSize = 0.1f;
+
+        if (navMeshSurface == null)
+            navMeshSurface = createdSurface;
+
+        return createdSurface;
     }
 
     private static NavMeshSurface CreateSurfaceFromTemplate(NavMeshSurface template, int agentTypeId, string nameSuffix)
@@ -385,13 +720,6 @@ public class RoomBuilder : MonoBehaviour
         CopySurfaceSettings(template, createdSurface);
         createdSurface.agentTypeID = agentTypeId;
 
-        CollectSources2d templateCollectSources = template.GetComponent<CollectSources2d>();
-        if (templateCollectSources != null)
-        {
-            CollectSources2d createdCollectSources = clone.AddComponent<CollectSources2d>();
-            CopyCollectSourcesSettings(templateCollectSources, createdCollectSources);
-        }
-
         return createdSurface;
     }
 
@@ -414,18 +742,6 @@ public class RoomBuilder : MonoBehaviour
         destination.voxelSize = source.voxelSize;
         destination.buildHeightMesh = source.buildHeightMesh;
         destination.minRegionArea = source.minRegionArea;
-        destination.hideEditorLogs = source.hideEditorLogs;
-    }
-
-    private static void CopyCollectSourcesSettings(CollectSources2d source, CollectSources2d destination)
-    {
-        if (source == null || destination == null)
-            return;
-
-        destination.overrideByGrid = source.overrideByGrid;
-        destination.useMeshPrefab = source.useMeshPrefab;
-        destination.compressBounds = source.compressBounds;
-        destination.overrideVector = source.overrideVector;
     }
 
     private void RestrictWallModifierToHumanoid(NavMeshModifier modifier)
@@ -526,7 +842,7 @@ public class RoomBuilder : MonoBehaviour
 
     private static List<NavMeshAgent> DisableAgentsForNavMeshRebuild()
     {
-        NavMeshAgent[] agents = FindObjectsOfType<NavMeshAgent>();
+        NavMeshAgent[] agents = FindObjectsByType<NavMeshAgent>(FindObjectsSortMode.None);
         var disabledAgents = new List<NavMeshAgent>(agents.Length);
 
         for (int i = 0; i < agents.Length; i++)
@@ -559,7 +875,7 @@ public class RoomBuilder : MonoBehaviour
 
     private static void RebindAllAgentsToCurrentNavMesh()
     {
-        NavMeshAgent[] agents = FindObjectsOfType<NavMeshAgent>();
+        NavMeshAgent[] agents = FindObjectsByType<NavMeshAgent>(FindObjectsSortMode.None);
         for (int i = 0; i < agents.Length; i++)
         {
             TryRebindAgent(agents[i]);
@@ -583,12 +899,30 @@ public class RoomBuilder : MonoBehaviour
         if (!NavMesh.SamplePosition(agent.transform.position, out NavMeshHit hit, AgentRebindMaxDistance, filter))
             return false;
 
-        if (!agent.Warp(hit.position))
+        if (!TryRepositionAgent(agent, hit.position))
             return false;
 
         agent.nextPosition = hit.position;
         agent.ResetPath();
         return true;
+    }
+
+    private static bool TryRepositionAgent(NavMeshAgent agent, Vector3 destination)
+    {
+        if (agent == null || !agent.enabled)
+            return false;
+
+        if (agent.Warp(destination))
+            return true;
+
+        agent.enabled = false;
+        agent.transform.position = destination;
+        agent.enabled = true;
+
+        if (agent.isOnNavMesh)
+            return true;
+
+        return agent.Warp(destination);
     }
 
     private Transform GetOrCreateChildContainer(Transform parent, string containerName)
@@ -602,23 +936,111 @@ public class RoomBuilder : MonoBehaviour
         return go.transform;
     }
 
+    private Tilemap ResolveCollisionTilemap()
+    {
+        if (layeredTilemaps != null && layeredTilemaps.CollisionTilemap != null)
+            return layeredTilemaps.CollisionTilemap;
+
+        return tilemap;
+    }
+
+    private Tilemap ResolveWorldPositionTilemap()
+    {
+        if (layeredTilemaps != null)
+        {
+            if (layeredTilemaps.FloorTilemap != null)
+                return layeredTilemaps.FloorTilemap;
+
+            if (layeredTilemaps.BoundsTilemap != null)
+                return layeredTilemaps.BoundsTilemap;
+        }
+
+        return ResolveCollisionTilemap();
+    }
+
+    private bool Uses3DNavigation()
+    {
+        return worldSpaceSettings != null && worldSpaceSettings.UsesXZPlane;
+    }
+
+    private Bounds CalculateRoomWorldBounds(Room room)
+    {
+        if (room == null)
+            return default;
+
+        if (worldSpaceSettings != null)
+        {
+            Vector3 center = worldSpaceSettings.GridRectCenterToWorld(
+                room.Width,
+                room.Height,
+                Uses3DNavigation() && room3DGeometryBuilder != null
+                    ? room3DGeometryBuilder.WallHeight * 0.5f
+                    : 0f);
+
+            Vector3 size = Uses3DNavigation()
+                ? new Vector3(
+                    room.Width * worldSpaceSettings.CellSize,
+                    Mathf.Max(1f, room3DGeometryBuilder != null ? room3DGeometryBuilder.WallHeight : 2f),
+                    room.Height * worldSpaceSettings.CellSize)
+                : new Vector3(
+                    room.Width * worldSpaceSettings.CellSize,
+                    room.Height * worldSpaceSettings.CellSize,
+                    1f);
+
+            return new Bounds(center, size);
+        }
+
+        return new Bounds(
+            new Vector3(room.Width * 0.5f, room.Height * 0.5f, 0f),
+            new Vector3(room.Width, room.Height, 1f));
+    }
+
+    private Vector3 CreateCellPosition(
+        Vector2Int tilePos,
+        float offsetX = 0.5f,
+        float offsetY = 0.5f,
+        float orthogonalOffset = DefaultSpawnedContentHeightOffset)
+    {
+        Tilemap worldTilemap = ResolveWorldPositionTilemap();
+        if (Uses3DNavigation() && worldTilemap != null && worldTilemap.layoutGrid != null)
+        {
+            Vector3 cellSize = worldTilemap.layoutGrid.cellSize;
+            Transform gridTransform = worldTilemap.layoutGrid.transform;
+            Vector3 localPoint = new Vector3(
+                (tilePos.x + offsetX) * cellSize.x,
+                (tilePos.y + offsetY) * cellSize.y,
+                0f);
+            Vector3 worldPoint = gridTransform.TransformPoint(localPoint);
+            if (worldSpaceSettings != null)
+                worldPoint = worldSpaceSettings.ClampToWalkPlane(worldPoint, orthogonalOffset);
+            return worldPoint;
+        }
+
+        if (worldSpaceSettings != null)
+            return worldSpaceSettings.GridToWorld(tilePos, offsetX, offsetY, orthogonalOffset);
+
+        return new Vector3(tilePos.x + offsetX, tilePos.y + offsetY, orthogonalOffset);
+    }
+
+    private void ConfigureSpawnedInstance(GameObject instance, Room2_5DRenderPreset preset)
+    {
+        Room2_5DPresentationUtility.EnsureDepthSorting(instance, preset);
+    }
+
     private void SpawnItemsInRoom(Room room, Transform parent, RoomTemplate template)
     {
-        if (template.itemsToSpawn <= 0) return;
+        if (template.itemsToSpawn <= 0)
+            return;
 
         List<Vector2Int> freeTiles = GetAllFreeFloorTiles(room);
+        if (freeTiles.Count == 0)
+            return;
+
         Shuffle(freeTiles);
 
-        WorldItemSpawner spawner = new(worldItemPrefab);
         ItemCatalog catalog = GameReferences.Instance.ItemCatalog;
         LootStatsProvider provider = PactManager.Instance != null ? PactManager.Instance.Loot : null;
-
-        int spawned = 0;
-
-        foreach (var tilePos in freeTiles)
-        {
-            if (spawned >= template.itemsToSpawn)
-                break;
+        WorldItemSpawner defaultSpawner = new WorldItemSpawner(worldItemPrefab);
 
         int spawnCount = template.itemsToSpawn;
         if (provider != null)
@@ -628,23 +1050,31 @@ public class RoomBuilder : MonoBehaviour
         }
 
         spawnCount = Mathf.Min(spawnCount, freeTiles.Count);
+        if (spawnCount <= 0)
+            return;
+
+        int spawned = 0;
+        for (int i = 0; i < freeTiles.Count && spawned < spawnCount; i++)
+        {
+            Vector2Int tilePos = freeTiles[i];
             if (!_tileOccupancy.TryOccupy(tilePos))
                 continue;
 
-            Vector3 worldPos = new(tilePos.x + 0.5f, tilePos.y + 0.5f, 0f);
-
-            ItemRaritySO rarity = RaritySelector.PickRarity(template.itemRarities);
-            if (rarity == null) continue;
-
-            if (!catalog.TryGetRandom(rarity, out ItemDataSO item))
-            // Primero check de override
+            Vector3 worldPos = CreateCellPosition(tilePos);
             if (template.itemSpawns != null && template.itemSpawns.Count > 0)
             {
                 RoomItemSpawnEntry entry = template.itemSpawns[Random.Range(0, template.itemSpawns.Count)];
+                if (entry == null || entry.itemData == null)
+                    continue;
+
                 int amount = Random.Range(entry.minAmount, entry.maxAmount + 1);
                 amount = ResolveLootAmount(entry.itemData, amount, provider, BuildLootTags(template, entry.itemData));
+                if (amount <= 0)
+                    continue;
+
                 GameObject prefab = entry.prefabOverride != null ? entry.prefabOverride : worldItemPrefab;
                 new WorldItemSpawner(prefab).SpawnItem(entry.itemData, amount, worldPos, parent);
+                spawned++;
                 continue;
             }
 
@@ -653,16 +1083,18 @@ public class RoomBuilder : MonoBehaviour
                 template.itemRarities,
                 provider,
                 template.lootTags);
-            if (chosenRarity == null) continue;
+            if (chosenRarity == null)
+                continue;
 
-            if (!catalog.TryGetRandom(chosenRarity, out ItemDataSO chosenItem)) continue;
+            if (!catalog.TryGetRandom(chosenRarity, out ItemDataSO chosenItem))
+                continue;
 
-            spawned++;
             int resolvedAmount = ResolveLootAmount(chosenItem, 1, provider, BuildLootTags(template, chosenItem));
             if (resolvedAmount <= 0)
                 continue;
 
-            spawner.SpawnItem(chosenItem, resolvedAmount, worldPos, parent);
+            defaultSpawner.SpawnItem(chosenItem, resolvedAmount, worldPos, parent);
+            spawned++;
         }
     }
 
@@ -696,7 +1128,7 @@ public class RoomBuilder : MonoBehaviour
             if (amount <= 0)
                 continue;
 
-            Vector3 worldPos = new(tilePos.x + 0.5f, tilePos.y + 0.5f, 0f);
+            Vector3 worldPos = CreateCellPosition(tilePos);
             spawner.SpawnItem(template.coinItemData, amount, worldPos, parent);
             spawned++;
         }
@@ -706,8 +1138,9 @@ public class RoomBuilder : MonoBehaviour
     {
         foreach (var door in room.Doors)
         {
-            Vector3 pos = new(door.Position.x + 0.513f, door.Position.y + 0.502f, 0);
+            Vector3 pos = CreateCellPosition(door.Position, orthogonalOffset: 0f);
             GameObject instance = Instantiate(doorPrefab, pos, Quaternion.identity, parent);
+            DisableSpritePresentation(instance);
 
             DoorController controller = instance.GetComponent<DoorController>();
             if (controller != null)
@@ -717,6 +1150,8 @@ public class RoomBuilder : MonoBehaviour
                     template.doorDown,
                     template.doorLeft,
                     template.doorRight);
+
+                ConfigureDoorRuntimeColliders(instance, controller, door.Direction);
             }
 
             DoorView view = instance.GetComponent<DoorView>();
@@ -725,13 +1160,55 @@ public class RoomBuilder : MonoBehaviour
         }
     }
 
-    private void DeleteOldDoors(Transform parent)
+    private void ConfigureDoorRuntimeColliders(GameObject instance, DoorController controller, DoorDirection direction)
     {
+        if (!Uses3DNavigation() || instance == null || controller == null)
+            return;
+
+        float cellSize = worldSpaceSettings != null ? worldSpaceSettings.CellSize : 1f;
+        float doorThickness = Mathf.Max(0.18f, cellSize * 0.22f);
+        float doorWidth = Mathf.Max(0.6f, cellSize * 0.92f);
+        const float doorHeight = 1.8f;
+
+        Vector3 size = direction == DoorDirection.Left || direction == DoorDirection.Right
+            ? new Vector3(doorThickness, doorHeight, doorWidth)
+            : new Vector3(doorWidth, doorHeight, doorThickness);
+        Vector3 center = new Vector3(0f, doorHeight * 0.5f, 0f);
+
+        BoxCollider blockCollider = instance.AddComponent<BoxCollider>();
+        blockCollider.isTrigger = false;
+        blockCollider.size = size;
+        blockCollider.center = center;
+
+        BoxCollider triggerCollider = instance.AddComponent<BoxCollider>();
+        triggerCollider.isTrigger = true;
+        triggerCollider.size = size;
+        triggerCollider.center = center;
+
+        controller.ConfigureRuntime3DColliders(blockCollider, triggerCollider);
+    }
+
+    private static void DisableSpritePresentation(GameObject instance)
+    {
+        if (instance == null)
+            return;
+
+        SpriteRenderer[] renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+            renderers[i].enabled = false;
+
+        SortingGroup[] sortingGroups = instance.GetComponentsInChildren<SortingGroup>(true);
+        for (int i = 0; i < sortingGroups.Length; i++)
+            sortingGroups[i].enabled = false;
+    }
+
+    private static void ClearContainerChildren(Transform parent)
+    {
+        if (parent == null)
+            return;
+
         foreach (Transform child in parent)
-        {
-            if (child.CompareTag("Door"))
-                Destroy(child.gameObject);
-        }
+            Destroy(child.gameObject);
     }
 
     private List<Vector2Int> GetAllFreeFloorTiles(Room room)
@@ -817,10 +1294,7 @@ public class RoomBuilder : MonoBehaviour
             if (enemyData.Prefab == null)
                 continue;
 
-            Vector3 worldPos = new(
-                tilePos.x + 0.5f,
-                tilePos.y + 0.5f,
-                0f);
+            Vector3 worldPos = CreateCellPosition(tilePos);
 
             IReadOnlyList<GameplayTag> effectiveTags = ResolveEnemyEffectiveTags(enemyData);
             int preferredAgentTypeId = ResolveEnemyPreferredAgentTypeId(enemyData, effectiveTags);
@@ -832,6 +1306,7 @@ public class RoomBuilder : MonoBehaviour
                 spawnPosition,
                 Quaternion.identity,
                 parent);
+            ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Character);
 
             EnemyMovementAgentTypeMapper.Apply(instance, effectiveTags);
             if (instance.TryGetComponent(out NavMeshAgent agent))
@@ -930,16 +1405,14 @@ public class RoomBuilder : MonoBehaviour
             if (!_tileOccupancy.TryOccupy(tilePos))
                 continue;
 
-            Vector3 worldPos = new(
-                tilePos.x + 0.5f,
-                tilePos.y + 0.5f,
-                0f);
+            Vector3 worldPos = CreateCellPosition(tilePos);
 
             GameObject chestInstance = Instantiate(
                 chestData.Prefab,
                 worldPos,
                 Quaternion.identity,
                 parent);
+            ConfigureSpawnedInstance(chestInstance, Room2_5DRenderPreset.Prop);
 
             if (chestData.LootTableOverride != null &&
                 chestInstance.TryGetComponent<ChestInteractable>(out var chestInteractable))
@@ -961,10 +1434,10 @@ public class RoomBuilder : MonoBehaviour
             if (npcData.Prefab == null)
                 continue;
 
-            Vector3 worldPos = new(
-                npcData.Position.x + 0.5f,
-                npcData.Position.y + 0.5f,
-                0f);
+            if (!_tileOccupancy.TryOccupy(npcData.Position))
+                continue;
+
+            Vector3 worldPos = CreateCellPosition(npcData.Position);
 
             GameObject instance = Instantiate(
                 npcData.Prefab,
@@ -973,6 +1446,7 @@ public class RoomBuilder : MonoBehaviour
                 parent);
 
             ApplyNpcDefinition(instance, npcData.Definition);
+            ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Character);
         }
     }
 
@@ -1038,7 +1512,7 @@ public class RoomBuilder : MonoBehaviour
             }
         }
 
-        NavMeshSurface[] discovered = FindObjectsOfType<NavMeshSurface>();
+        NavMeshSurface[] discovered = FindObjectsByType<NavMeshSurface>(FindObjectsSortMode.None);
         for (int i = 0; i < discovered.Length; i++)
         {
             if (discovered[i] != null)

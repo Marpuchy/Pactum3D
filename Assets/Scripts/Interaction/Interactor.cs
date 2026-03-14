@@ -8,7 +8,6 @@ using Zenject;
 /// Keeps a list of nearby candidates and picks the best one based on distance
 /// and facing before relaying input to it.
 /// </summary>
-[RequireComponent(typeof(Collider2D))]
 public sealed class Interactor : MonoBehaviour
 {
     [Header("Detection")]
@@ -30,8 +29,7 @@ public sealed class Interactor : MonoBehaviour
     private IInstantiator instantiator;
     private readonly HashSet<IInteractable> _candidates = new();
     private IInteractable _current;
-    
-    
+    private RoomWorldSpaceSettings worldSpaceSettings;
 
     /// <summary>
     /// Current interactable selected by the interactor or null if none.
@@ -90,14 +88,7 @@ public sealed class Interactor : MonoBehaviour
         if (!removed)
             return false;
 
-        Vector3 position = transform.position + dropOffset;
-        if (dropScatter > 0f)
-        {
-            position += new Vector3(
-                Random.Range(-dropScatter, dropScatter),
-                Random.Range(-dropScatter, dropScatter),
-                0f);
-        }
+        Vector3 position = ResolveDropPosition();
         
         Transform parent = RoomContext.Current != null
             ? RoomContext.Current.ItemsRoot
@@ -120,6 +111,8 @@ public sealed class Interactor : MonoBehaviour
 
         if (miniInventory == null)
             miniInventory = GetComponent<PlayerMiniInventory>();
+
+        worldSpaceSettings = ResolveWorldSpaceSettings();
     }
 
     private static bool TryGetItemData(IItem item, out ItemDataSO data)
@@ -136,12 +129,25 @@ public sealed class Interactor : MonoBehaviour
 
     private void Reset()
     {
-        var col = GetComponent<Collider2D>();
-        col.isTrigger = true;
+        if (TryGetComponent(out Collider2D collider2D))
+        {
+            collider2D.isTrigger = true;
+            return;
+        }
+
+        Transform interactionRange = transform.Find("InteractionRange");
+        if (interactionRange != null && interactionRange.TryGetComponent(out Collider rangeCollider))
+            rangeCollider.isTrigger = true;
     }
 
     private void Update()
     {
+        if (UsesXZInteractionQuery())
+        {
+            UpdateSceneQueryInteractions();
+            return;
+        }
+
         UpdateFocus();
     }
 
@@ -160,6 +166,9 @@ public sealed class Interactor : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (UsesXZInteractionQuery())
+            return;
+
         if (((1 << other.gameObject.layer) & interactableMask) == 0) return;
 
         if (other.TryGetComponent<IInteractable>(out var interactable))
@@ -177,6 +186,9 @@ public sealed class Interactor : MonoBehaviour
 
     private void OnTriggerExit2D(Collider2D other)
     {
+        if (UsesXZInteractionQuery())
+            return;
+
         if (other.TryGetComponent<IInteractable>(out var interactable))
         {
             _candidates.Remove(interactable);
@@ -190,6 +202,12 @@ public sealed class Interactor : MonoBehaviour
 
     private void UpdateFocus(bool force = false)
     {
+        if (UsesXZInteractionQuery())
+        {
+            UpdateSceneQueryInteractions(force);
+            return;
+        }
+
         var best = SelectBestInteractable();
         if (!force && ReferenceEquals(best, _current)) return;
 
@@ -221,5 +239,107 @@ public sealed class Interactor : MonoBehaviour
             .OrderByDescending(x => x.score)
             .Select(x => x.c)
             .FirstOrDefault();
+    }
+
+    private void UpdateSceneQueryInteractions(bool force = false)
+    {
+        InteractableBase[] interactables = FindObjectsByType<InteractableBase>(FindObjectsSortMode.None);
+        IInteractable bestManual = null;
+        float bestScore = float.NegativeInfinity;
+
+        for (int i = 0; i < interactables.Length; i++)
+        {
+            InteractableBase interactable = interactables[i];
+            if (interactable == null || !interactable.isActiveAndEnabled)
+                continue;
+
+            if (((1 << interactable.gameObject.layer) & interactableMask) == 0)
+                continue;
+
+            Transform interactionPoint = interactable.InteractionPoint;
+            if (interactionPoint == null || !interactable.CanInteract(this))
+                continue;
+
+            float planarDistance = ResolvePlanarDistance(transform.position, interactionPoint.position);
+            if (planarDistance > maxDistance)
+                continue;
+
+            if (interactable.Mode == InteractionMode.Automatic)
+            {
+                interactable.Interact(this);
+                continue;
+            }
+
+            float score = -planarDistance;
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestManual = interactable;
+            }
+        }
+
+        if (!force && ReferenceEquals(bestManual, _current))
+            return;
+
+        _current = bestManual;
+        focusChannel?.Raise(_current);
+    }
+
+    private RoomWorldSpaceSettings ResolveWorldSpaceSettings()
+    {
+        if (worldSpaceSettings == null)
+        {
+            worldSpaceSettings = RoomWorldSpaceSettings.Current != null
+                ? RoomWorldSpaceSettings.Current
+                : FindFirstObjectByType<RoomWorldSpaceSettings>();
+        }
+
+        return worldSpaceSettings;
+    }
+
+    private bool UsesXZInteractionQuery()
+    {
+        RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
+        return settings != null && settings.UsesXZPlane;
+    }
+
+    private float ResolvePlanarDistance(Vector3 from, Vector3 to)
+    {
+        RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
+        if (settings != null)
+            return settings.PlanarDistance(from, to);
+
+        from.z = 0f;
+        to.z = 0f;
+        return Vector3.Distance(from, to);
+    }
+
+    private Vector3 ResolveDropPosition()
+    {
+        RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
+        bool usesXZ = settings != null && settings.UsesXZPlane;
+
+        Vector3 resolvedOffset = usesXZ
+            ? new Vector3(dropOffset.x, 0f, Mathf.Approximately(dropOffset.z, 0f) ? dropOffset.y : dropOffset.z)
+            : dropOffset;
+
+        Vector3 position = transform.position + resolvedOffset;
+        if (dropScatter <= 0f)
+            return position;
+
+        if (usesXZ)
+        {
+            position += new Vector3(
+                Random.Range(-dropScatter, dropScatter),
+                0f,
+                Random.Range(-dropScatter, dropScatter));
+            return position;
+        }
+
+        position += new Vector3(
+            Random.Range(-dropScatter, dropScatter),
+            Random.Range(-dropScatter, dropScatter),
+            0f);
+        return position;
     }
 }

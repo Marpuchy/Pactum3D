@@ -46,6 +46,9 @@ public sealed class PlayerMiniInventory : MonoBehaviour, IItemCapabilityProvider
         if (statResolver == null)
             statResolver = GetComponent<CharacterStatResolver>();
 
+        if (playerController == null)
+            playerController = GetComponent<PlayerController>();
+
         RegisterExistingViews();
 
         if (miniInventoryView == null)

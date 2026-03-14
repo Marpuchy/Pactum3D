@@ -1,7 +1,6 @@
 using UnityEngine;
 
 [RequireComponent(typeof(SpriteRenderer))]
-[RequireComponent(typeof(Collider2D))]
 [RequireComponent(typeof(DoorView))]
 public class DoorController : MonoBehaviour
 {
@@ -19,6 +18,8 @@ public class DoorController : MonoBehaviour
     [Header("Colliders")]
     [SerializeField] private Collider2D triggerCollider;
     [SerializeField] private Collider2D blockCollider;
+    [SerializeField] private Collider triggerCollider3D;
+    [SerializeField] private Collider blockCollider3D;
     
     private SpriteRenderer spriteRenderer;
     private DoorView doorView;
@@ -30,6 +31,7 @@ public class DoorController : MonoBehaviour
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         doorView = GetComponent<DoorView>();
+        ResolveRuntimeReferences();
         SyncFromView();
         CloseInternal(notifyWorldChanged: false);
         //Open();
@@ -42,12 +44,14 @@ public class DoorController : MonoBehaviour
 
     private void OnEnable()
     {
-        roomClearedEvent.Register(Open);
+        if (roomClearedEvent != null)
+            roomClearedEvent.Register(Open);
     }
 
     private void OnDisable()
     {
-        roomClearedEvent.Unregister(Open);
+        if (roomClearedEvent != null)
+            roomClearedEvent.Unregister(Open);
     }
 
     private void Open()
@@ -61,9 +65,7 @@ public class DoorController : MonoBehaviour
         
         isOpen = true;
         RefreshSprite();
-        
-        blockCollider.enabled = false;
-        triggerCollider.enabled = true;
+        ApplyColliderState(isOpen);
 
         if (notifyWorldChanged)
             RequestNavMeshRefresh();
@@ -81,9 +83,7 @@ public class DoorController : MonoBehaviour
 
         isOpen = false;
         RefreshSprite();
-        
-        blockCollider.enabled = true;
-        triggerCollider.enabled = false;
+        ApplyColliderState(isOpen);
 
         if (notifyWorldChanged)
             RequestNavMeshRefresh();
@@ -107,6 +107,23 @@ public class DoorController : MonoBehaviour
         SyncFromView();
     }
 
+    public void ConfigureRuntime3DColliders(Collider block, Collider trigger)
+    {
+        blockCollider3D = block;
+        triggerCollider3D = trigger;
+        ApplyColliderState(isOpen);
+    }
+
+    public Sprite GetClosedSprite(DoorDirection direction)
+    {
+        DoorSpriteSet set = ResolveSpriteSet(direction);
+        if (set != null && set.closed != null)
+            return set.closed;
+
+        DoorSpriteSet fallback = GetFallbackSprites();
+        return fallback != null ? fallback.closed : null;
+    }
+
     public void SyncFromView()
     {
         DoorDirection direction = doorView != null ? doorView.direction : DoorDirection.Up;
@@ -115,14 +132,7 @@ public class DoorController : MonoBehaviour
 
     private void ApplyDirectionalSprites(DoorDirection direction)
     {
-        activeSprites = direction switch
-        {
-            DoorDirection.Up => upSprites,
-            DoorDirection.Down => downSprites,
-            DoorDirection.Left => leftSprites,
-            DoorDirection.Right => rightSprites,
-            _ => null
-        };
+        activeSprites = ResolveSpriteSet(direction);
 
         if (!HasSprites(activeSprites))
             activeSprites = GetFallbackSprites();
@@ -156,6 +166,65 @@ public class DoorController : MonoBehaviour
         return set != null && (set.closed != null || set.open != null);
     }
 
+    private DoorSpriteSet ResolveSpriteSet(DoorDirection direction)
+    {
+        return direction switch
+        {
+            DoorDirection.Up => upSprites,
+            DoorDirection.Down => downSprites,
+            DoorDirection.Left => leftSprites,
+            DoorDirection.Right => rightSprites,
+            _ => null
+        };
+    }
+
+    private void ResolveRuntimeReferences()
+    {
+        if (triggerCollider == null || blockCollider == null)
+        {
+            Collider2D[] colliders2D = GetComponents<Collider2D>();
+            for (int i = 0; i < colliders2D.Length; i++)
+            {
+                Collider2D collider2D = colliders2D[i];
+                if (collider2D == null)
+                    continue;
+
+                if (collider2D.isTrigger)
+                    triggerCollider ??= collider2D;
+                else
+                    blockCollider ??= collider2D;
+            }
+        }
+
+        if (triggerCollider3D == null || blockCollider3D == null)
+        {
+            Collider[] colliders3D = GetComponents<Collider>();
+            for (int i = 0; i < colliders3D.Length; i++)
+            {
+                Collider collider3D = colliders3D[i];
+                if (collider3D == null)
+                    continue;
+
+                if (collider3D.isTrigger)
+                    triggerCollider3D ??= collider3D;
+                else
+                    blockCollider3D ??= collider3D;
+            }
+        }
+    }
+
+    private void ApplyColliderState(bool open)
+    {
+        if (blockCollider != null)
+            blockCollider.enabled = !open;
+        if (triggerCollider != null)
+            triggerCollider.enabled = open;
+        if (blockCollider3D != null)
+            blockCollider3D.enabled = !open;
+        if (triggerCollider3D != null)
+            triggerCollider3D.enabled = open;
+    }
+
     private void RequestNavMeshRefresh()
     {
         if (!Application.isPlaying || !hasStarted)
@@ -171,7 +240,18 @@ public class DoorController : MonoBehaviour
         if (!isOpen) return;
         if (!other.CompareTag("Player")) return;
 
-        triggerCollider.enabled = false;
+        if (triggerCollider != null)
+            triggerCollider.enabled = false;
+        doorEnteredEvent?.Raise();
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!isOpen) return;
+        if (!other.CompareTag("Player")) return;
+
+        if (triggerCollider3D != null)
+            triggerCollider3D.enabled = false;
         doorEnteredEvent?.Raise();
     }
 

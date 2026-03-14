@@ -5,9 +5,15 @@ using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.Tilemaps;
 
-[RequireComponent(typeof(Rigidbody2D))]
+[DisallowMultipleComponent]
 public class PlayerController : MonoBehaviour
 {
+    private const float MovementEpsilon = 0.05f;
+    private const float Default3DColliderRadius = 0.18f;
+    private const float Default3DColliderHeight = 1.2f;
+    private const float Default3DGroundHeight = 0f;
+    private const float MinScaleComponent = 0.0001f;
+
     [Header("Combat")]
     [SerializeField] private bool useAttackLockTime = true;
 
@@ -25,8 +31,6 @@ public class PlayerController : MonoBehaviour
     private float dashCooldownLeft;
     private Vector2 dashDir;
     private bool wasMoving;
-
-    private const float MovementEpsilon = 0.05f;
 
     [Header("Movement")]
     [SerializeField] private float minMoveSpeed = 2.5f;
@@ -51,7 +55,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private PlayerAudioStopEvent playerAudioStopEvent;
     [SerializeField] private PlayerAudioAttackingEvent playerAudioAttackingEvent;
 
-    // Runtime stats
     private float currentMaxSpeed;
     private float currentAttackSpeed;
     private float currentDashSpeed;
@@ -62,6 +65,10 @@ public class PlayerController : MonoBehaviour
     private float currentTurnAcceleration;
 
     private Rigidbody2D rb;
+    private Rigidbody rb3D;
+    private CapsuleCollider capsule3D;
+    private NavMeshAgent navMeshAgent;
+    private RoomWorldSpaceSettings worldSpaceSettings;
     private IPlayerDataService playerDataService;
     private Vector2 rawInput;
     private Vector2 input;
@@ -87,32 +94,19 @@ public class PlayerController : MonoBehaviour
     public float CurrentSpeed
     {
         get => currentMaxSpeed;
-        set
-        {
-            currentMaxSpeed = Mathf.Max(0f, value);
-        }
+        set => currentMaxSpeed = Mathf.Max(0f, value);
     }
 
     private void Awake()
     {
+        EnsureGameplaySupportComponents();
         playerDataService = RuntimeServiceFallback.PlayerDataService;
-        DisableNavMeshAgentIfPresent();
-
         rb = GetComponent<Rigidbody2D>();
-        if (rb == null)
-            rb = gameObject.AddComponent<Rigidbody2D>();
-
-        rb.gravityScale = 0f;
-        rb.freezeRotation = true;
-        rb.bodyType = RigidbodyType2D.Dynamic;
-        rb.useFullKinematicContacts = false;
-        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        rb.interpolation = RigidbodyInterpolation2D.Interpolate;
-        rb.linearDamping = 0f;
-        rb.angularDamping = 0f;
-        rb.linearVelocity = Vector2.zero;
-
-        EnsureCriticalWallLayerCollisionsEnabled();
+        rb3D = GetComponent<Rigidbody>();
+        capsule3D = GetComponent<CapsuleCollider>();
+        navMeshAgent = GetComponent<NavMeshAgent>();
+        worldSpaceSettings = ResolveWorldSpaceSettings();
+        ConfigureMovementComponents();
 
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
@@ -122,18 +116,25 @@ public class PlayerController : MonoBehaviour
 
         RefreshRuntimeStats();
         RefreshMovementTagState();
+        Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Character);
+        EnsureXZVisualProxy();
     }
 
     private void Start()
     {
-        // Ensure tags modified during other Awake calls are reflected.
         RefreshMovementTagState();
+        transform.position = ClampToGameplayPlane(transform.position);
     }
 
     private void OnEnable()
     {
-        DisableNavMeshAgentIfPresent();
-        EnsureCriticalWallLayerCollisionsEnabled();
+        EnsureGameplaySupportComponents();
+        rb = GetComponent<Rigidbody2D>();
+        rb3D = GetComponent<Rigidbody>();
+        capsule3D = GetComponent<CapsuleCollider>();
+        navMeshAgent = GetComponent<NavMeshAgent>();
+        worldSpaceSettings = ResolveWorldSpaceSettings();
+        ConfigureMovementComponents();
 
         if (statResolver == null)
             statResolver = GetComponent<CharacterStatResolver>();
@@ -143,6 +144,8 @@ public class PlayerController : MonoBehaviour
 
         RefreshRuntimeStats();
         RefreshMovementTagState();
+        Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Character);
+        EnsureXZVisualProxy();
     }
 
     private void OnDisable()
@@ -194,7 +197,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision == null)
+        if (Uses3DMovement() || collision == null)
             return;
 
         HandleFlyingCollisionCandidate(collision.collider);
@@ -202,7 +205,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnCollisionStay2D(Collision2D collision)
     {
-        if (collision == null)
+        if (Uses3DMovement() || collision == null)
             return;
 
         HandleFlyingCollisionCandidate(collision.collider);
@@ -292,8 +295,7 @@ public class PlayerController : MonoBehaviour
         if (useAttackLockTime && isAttacking)
         {
             currentVelocity = Vector2.zero;
-            if (rb != null)
-                rb.linearVelocity = Vector2.zero;
+            ApplyMovementVelocity(Vector2.zero, deltaTime);
             return;
         }
 
@@ -328,10 +330,7 @@ public class PlayerController : MonoBehaviour
         if (hasMovement)
             lastDir = currentVelocity.normalized;
 
-        if (rb != null)
-            rb.linearVelocity = currentVelocity;
-        else
-            transform.position += new Vector3(currentVelocity.x, currentVelocity.y, 0f) * deltaTime;
+        ApplyMovementVelocity(currentVelocity, deltaTime);
     }
 
     private static Vector2 ToCardinal(Vector2 v)
@@ -407,6 +406,12 @@ public class PlayerController : MonoBehaviour
         currentAcceleration = ResolveStat(StatType.Acceleration, acceleration);
         currentDeceleration = ResolveStat(StatType.Deceleration, deceleration);
         currentTurnAcceleration = ResolveStat(StatType.TurnAcceleration, turnAcceleration);
+
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.speed = Mathf.Max(currentMaxSpeed, Mathf.Max(currentDashSpeed, 0.01f));
+            navMeshAgent.acceleration = Mathf.Max(currentAcceleration, Mathf.Max(currentTurnAcceleration, 0.01f));
+        }
     }
 
     private bool IsMeleeAttackSelected()
@@ -415,17 +420,6 @@ public class PlayerController : MonoBehaviour
             return true;
 
         return playerDataService.SelectedAttack == AttackType.Melee;
-    }
-
-    private void DisableNavMeshAgentIfPresent()
-    {
-        if (!TryGetComponent(out NavMeshAgent agent) || !agent.enabled)
-            return;
-
-        if (agent.isOnNavMesh)
-            agent.ResetPath();
-
-        agent.enabled = false;
     }
 
     public void EndAttack()
@@ -444,6 +438,21 @@ public class PlayerController : MonoBehaviour
 
         if (rb != null)
             rb.linearVelocity = Vector2.zero;
+
+        if (rb3D != null)
+        {
+            rb3D.linearVelocity = Vector3.zero;
+            rb3D.angularVelocity = Vector3.zero;
+            rb3D.position = ClampToGameplayPlane(rb3D.position);
+        }
+
+        if (navMeshAgent != null && navMeshAgent.enabled)
+        {
+            if (navMeshAgent.isOnNavMesh)
+                navMeshAgent.ResetPath();
+
+            navMeshAgent.nextPosition = ClampToGameplayPlane(transform.position);
+        }
     }
 
     private void HandleStatsChanged()
@@ -455,6 +464,26 @@ public class PlayerController : MonoBehaviour
     private void RefreshMovementTagState()
     {
         IReadOnlyList<GameplayTag> effectiveTags = ResolveEffectiveTags();
+
+        if (Uses3DMovement())
+        {
+            if (navMeshAgent == null)
+                navMeshAgent = GetComponent<NavMeshAgent>();
+
+            if (navMeshAgent != null && navMeshAgent.enabled)
+            {
+                if (navMeshAgent.isOnNavMesh)
+                    navMeshAgent.ResetPath();
+
+                navMeshAgent.enabled = false;
+            }
+
+            if (flyingCollisionBypassActive)
+                ApplyFlyingCollisionBypass(false);
+
+            return;
+        }
+
         UpdateFlyingCollisionBypass(effectiveTags);
     }
 
@@ -479,6 +508,13 @@ public class PlayerController : MonoBehaviour
 
     private void ApplyFlyingCollisionBypass(bool enabled)
     {
+        if (Uses3DMovement())
+        {
+            flyingCollisionBypassActive = false;
+            RestoreIgnoredFlyingColliders();
+            return;
+        }
+
         flyingCollisionBypassActive = enabled;
         EnsureCriticalWallLayerCollisionsEnabled();
 
@@ -501,6 +537,9 @@ public class PlayerController : MonoBehaviour
 
         flyingCollisionRefreshTimer = Mathf.Max(0.05f, flyingCollisionRefreshInterval);
         RefreshMovementTagState();
+
+        if (Uses3DMovement())
+            return;
 
         if (flyingCollisionBypassActive)
             ReconcileIgnoredFlyingColliders();
@@ -556,7 +595,7 @@ public class PlayerController : MonoBehaviour
 
     private void PrimeFlyingIgnoresForBreakables()
     {
-        BreakableBase[] breakables = FindObjectsOfType<BreakableBase>();
+        BreakableBase[] breakables = FindObjectsByType<BreakableBase>(FindObjectsSortMode.None);
         if (breakables == null || breakables.Length == 0)
             return;
 
@@ -657,9 +696,12 @@ public class PlayerController : MonoBehaviour
 
     private void EnsureCriticalWallLayerCollisionsEnabled()
     {
+        if (Uses3DMovement())
+            return;
+
         int playerLayer = gameObject.layer;
 
-        Physics2D.IgnoreLayerCollision(playerLayer, 0, false); // Default
+        Physics2D.IgnoreLayerCollision(playerLayer, 0, false);
 
         int obstacleLayer = LayerMask.NameToLayer("Obstacle");
         if (obstacleLayer >= 0)
@@ -689,5 +731,272 @@ public class PlayerController : MonoBehaviour
         }
 
         return false;
+    }
+
+    private Vector3 ResolveFallbackMovementDelta(float deltaTime)
+    {
+        RoomWorldSpaceSettings worldSpace = ResolveWorldSpaceSettings();
+        if (worldSpace != null && worldSpace.UsesXZPlane)
+            return new Vector3(currentVelocity.x, 0f, currentVelocity.y) * deltaTime;
+
+        return new Vector3(currentVelocity.x, currentVelocity.y, 0f) * deltaTime;
+    }
+
+    private void ConfigureMovementComponents()
+    {
+        if (Uses3DMovement())
+        {
+            Configure3DMovement();
+            return;
+        }
+
+        Configure2DMovement();
+    }
+
+    private void Configure2DMovement()
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+        if (rb == null)
+            rb = gameObject.AddComponent<Rigidbody2D>();
+
+        rb.simulated = true;
+        rb.gravityScale = 0f;
+        rb.freezeRotation = true;
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.useFullKinematicContacts = false;
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        rb.linearDamping = 0f;
+        rb.angularDamping = 0f;
+        rb.linearVelocity = Vector2.zero;
+
+        if (navMeshAgent != null && navMeshAgent.enabled)
+        {
+            if (navMeshAgent.isOnNavMesh)
+                navMeshAgent.ResetPath();
+
+            navMeshAgent.enabled = false;
+        }
+
+        EnsureCriticalWallLayerCollisionsEnabled();
+    }
+
+    private void Configure3DMovement()
+    {
+        RemoveRoot2DPhysicsComponentsFor3D();
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.simulated = false;
+        }
+
+        if (navMeshAgent == null)
+            navMeshAgent = GetComponent<NavMeshAgent>();
+        if (navMeshAgent != null && navMeshAgent.enabled)
+        {
+            if (navMeshAgent.isOnNavMesh)
+                navMeshAgent.ResetPath();
+
+            navMeshAgent.enabled = false;
+        }
+
+        if (rb3D == null)
+            rb3D = GetComponent<Rigidbody>();
+        if (rb3D == null)
+            rb3D = gameObject.AddComponent<Rigidbody>();
+
+        if (capsule3D == null)
+            capsule3D = GetComponent<CapsuleCollider>();
+        if (capsule3D == null)
+            capsule3D = gameObject.AddComponent<CapsuleCollider>();
+
+        if (rb3D == null || capsule3D == null)
+            return;
+
+        rb3D.useGravity = false;
+        rb3D.isKinematic = false;
+        rb3D.interpolation = RigidbodyInterpolation.Interpolate;
+        rb3D.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb3D.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotation;
+        rb3D.linearVelocity = Vector3.zero;
+        rb3D.angularVelocity = Vector3.zero;
+
+        capsule3D.isTrigger = false;
+        capsule3D.direction = 1;
+        capsule3D.radius = ResolveLocal3DColliderRadius();
+        capsule3D.height = ResolveLocal3DColliderHeight(capsule3D.radius);
+        capsule3D.center = new Vector3(0f, capsule3D.height * 0.5f, 0f);
+
+        Vector3 snappedPosition = ClampToGameplayPlane(transform.position);
+        transform.position = snappedPosition;
+        rb3D.position = snappedPosition;
+    }
+
+    private void ApplyMovementVelocity(Vector2 planarVelocity, float deltaTime)
+    {
+        if (Uses3DMovement())
+        {
+            Apply3DMovement(planarVelocity, deltaTime);
+            return;
+        }
+
+        if (rb != null)
+            rb.linearVelocity = planarVelocity;
+        else
+            transform.position += ResolveFallbackMovementDelta(deltaTime);
+    }
+
+    private void Apply3DMovement(Vector2 planarVelocity, float deltaTime)
+    {
+        Vector3 currentPosition = ClampToGameplayPlane(rb3D != null ? rb3D.position : transform.position);
+        Vector3 targetPosition = currentPosition;
+
+        if (planarVelocity.sqrMagnitude > MovementEpsilon * MovementEpsilon)
+            targetPosition += ToWorldMovementDelta(planarVelocity * deltaTime);
+
+        targetPosition = ClampToGameplayPlane(targetPosition);
+
+        if (rb3D != null)
+        {
+            rb3D.linearVelocity = Vector3.zero;
+            rb3D.angularVelocity = Vector3.zero;
+            rb3D.MovePosition(targetPosition);
+            return;
+        }
+
+        transform.position = targetPosition;
+    }
+
+    private RoomWorldSpaceSettings ResolveWorldSpaceSettings()
+    {
+        if (worldSpaceSettings == null)
+        {
+            worldSpaceSettings = RoomWorldSpaceSettings.Current != null
+                ? RoomWorldSpaceSettings.Current
+                : FindFirstObjectByType<RoomWorldSpaceSettings>();
+        }
+
+        return worldSpaceSettings;
+    }
+
+    private bool Uses3DMovement()
+    {
+        RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
+        return settings != null && settings.UsesXZPlane;
+    }
+
+    public Vector3 GetClampedTeleportPosition(Vector3 position)
+    {
+        return ClampToGameplayPlane(position);
+    }
+
+    private void RemoveRoot2DPhysicsComponentsFor3D()
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+
+        if (rb != null)
+        {
+            DestroyImmediate(rb);
+            rb = null;
+        }
+    }
+
+    private void EnsureXZVisualProxy()
+    {
+        SpriteRenderer rootRenderer = GetComponent<SpriteRenderer>();
+        if (rootRenderer == null)
+            return;
+
+        XZSpriteVisualProxy proxy = GetComponent<XZSpriteVisualProxy>();
+        bool use3DPresentation = Uses3DMovement();
+
+        if (use3DPresentation)
+        {
+            if (proxy == null)
+                proxy = gameObject.AddComponent<XZSpriteVisualProxy>();
+
+            proxy.ConfigureRuntimeAnchoring(0.02f, 0.08f);
+            proxy.enabled = true;
+            proxy.Sync();
+        }
+        else if (proxy != null)
+        {
+            proxy.enabled = false;
+            Transform visualChild = transform.Find("XZVisualSprite");
+            if (visualChild != null)
+                visualChild.gameObject.SetActive(false);
+        }
+
+        rootRenderer.enabled = !use3DPresentation;
+
+        BillboardFacingCamera billboard = GetComponent<BillboardFacingCamera>();
+        if (billboard != null)
+            billboard.enabled = false;
+
+        SpriteDepthSorter sorter = GetComponent<SpriteDepthSorter>();
+        if (sorter != null)
+        {
+            sorter.RefreshRenderTargets();
+            sorter.ApplySorting();
+        }
+    }
+
+    private void EnsureGameplaySupportComponents()
+    {
+        if (GetComponent<Interactor>() == null)
+            gameObject.AddComponent<Interactor>();
+
+        if (GetComponent<PlayerInteractionInput>() == null)
+            gameObject.AddComponent<PlayerInteractionInput>();
+
+        if (GetComponent<PlayerInventoryInput>() == null)
+            gameObject.AddComponent<PlayerInventoryInput>();
+    }
+
+    private float ResolveLocal3DColliderRadius()
+    {
+        Vector3 lossyScale = transform.lossyScale;
+        float horizontalScale = Mathf.Max(
+            Mathf.Abs(lossyScale.x),
+            Mathf.Abs(lossyScale.z),
+            MinScaleComponent);
+
+        return Default3DColliderRadius / horizontalScale;
+    }
+
+    private float ResolveLocal3DColliderHeight(float localRadius)
+    {
+        Vector3 lossyScale = transform.lossyScale;
+        float verticalScale = Mathf.Max(Mathf.Abs(lossyScale.y), MinScaleComponent);
+        float localHeight = Default3DColliderHeight / verticalScale;
+        return Mathf.Max(localHeight, (localRadius * 2f) + 0.01f);
+    }
+
+    private Vector3 ClampToGameplayPlane(Vector3 position)
+    {
+        RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
+        if (settings != null)
+        {
+            position = settings.ClampToWalkPlane(position);
+            if (settings.UsesXZPlane)
+                position.y = settings.Origin.y + settings.OrthogonalAxisOffset + Default3DGroundHeight;
+
+            return position;
+        }
+
+        position.z = 0f;
+        return position;
+    }
+
+    private Vector3 ToWorldMovementDelta(Vector2 planarDelta)
+    {
+        RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
+        if (settings != null && settings.UsesXZPlane)
+            return new Vector3(planarDelta.x, 0f, planarDelta.y);
+
+        return new Vector3(planarDelta.x, planarDelta.y, 0f);
     }
 }

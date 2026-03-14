@@ -126,10 +126,28 @@ public static class PlayerMovementAgentTypeMapper
         if (!NavMesh.SamplePosition(currentPosition, out NavMeshHit hit, NavMeshRebindMaxDistance, filter))
             return;
 
-        if (!agent.Warp(hit.position))
+        if (!TryRepositionAgent(agent, hit.position))
             return;
 
         agent.nextPosition = hit.position;
         agent.ResetPath();
+    }
+
+    private static bool TryRepositionAgent(NavMeshAgent agent, Vector3 destination)
+    {
+        if (agent == null || !agent.enabled)
+            return false;
+
+        if (agent.Warp(destination))
+            return true;
+
+        agent.enabled = false;
+        agent.transform.position = destination;
+        agent.enabled = true;
+
+        if (agent.isOnNavMesh)
+            return true;
+
+        return agent.Warp(destination);
     }
 }

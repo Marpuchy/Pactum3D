@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
-using NavMeshPlus.Components;
 using UnityEngine;
+using Unity.AI.Navigation;
 
 public class RoomNavMeshController : MonoBehaviour
 {
@@ -32,12 +32,16 @@ public class RoomNavMeshController : MonoBehaviour
         rebuildScheduled = true;
         yield return null;
 
+        Physics.SyncTransforms();
         Physics2D.SyncTransforms();
 
         foreach (NavMeshSurface surface in ResolveNavMeshSurfaces())
         {
+            if (surface == null)
+                continue;
+
             if (surface.navMeshData == null)
-                surface.BuildNavMeshAsync();
+                surface.BuildNavMesh();
             else
                 surface.UpdateNavMesh(surface.navMeshData);
         }
@@ -62,7 +66,7 @@ public class RoomNavMeshController : MonoBehaviour
             }
         }
 
-        NavMeshSurface[] discovered = FindObjectsOfType<NavMeshSurface>();
+        NavMeshSurface[] discovered = FindObjectsByType<NavMeshSurface>(FindObjectsSortMode.None);
         for (int i = 0; i < discovered.Length; i++)
         {
             if (discovered[i] != null)

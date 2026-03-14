@@ -1,6 +1,5 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Collider2D))]
 public sealed class AutoPickupCoin : InteractableBase
 {
     [SerializeField] private ItemDataSO itemData;
@@ -10,8 +9,14 @@ public sealed class AutoPickupCoin : InteractableBase
 
     private void Reset()
     {
-        var col = GetComponent<Collider2D>();
-        col.isTrigger = true;
+        if (TryGetComponent(out Collider2D collider2D))
+        {
+            collider2D.isTrigger = true;
+            return;
+        }
+
+        if (TryGetComponent(out Collider collider3D))
+            collider3D.isTrigger = true;
     }
 
     private void OnValidate()

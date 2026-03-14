@@ -21,6 +21,7 @@ public class EnemyBrain : MonoBehaviour
     private bool statsSubscribed;
     private float currentAttackRange;
     private float nextNavMeshRebindTime;
+    private RoomWorldSpaceSettings worldSpaceSettings;
 
     private void Awake()
     {
@@ -29,6 +30,9 @@ public class EnemyBrain : MonoBehaviour
         animatorDriver = GetComponent<EnemyAnimatorDriver>();
         if (statResolver == null)
             statResolver = GetComponent<CharacterStatResolver>();
+        worldSpaceSettings = RoomWorldSpaceSettings.Current;
+
+        Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Character);
 
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
@@ -37,6 +41,9 @@ public class EnemyBrain : MonoBehaviour
 
     private void OnEnable()
     {
+        if (worldSpaceSettings == null)
+            worldSpaceSettings = RoomWorldSpaceSettings.Current;
+
         TrySubscribeToStats();
         RefreshStats();
     }
@@ -48,17 +55,15 @@ public class EnemyBrain : MonoBehaviour
 
     private void Start()
     {
+        bool usesXZPlane = worldSpaceSettings != null && worldSpaceSettings.UsesXZPlane;
         agent.updateRotation = false;
-        agent.updateUpAxis = false;
+        agent.updateUpAxis = usesXZPlane;
         // Dejamos que el "parar para atacar" lo controle AttackRange, no el stoppingDistance del agente.
         agent.stoppingDistance = 0f;
 
         RefreshStats();
-        
 
-        Vector3 pos = transform.position;
-        pos.z = 0f;
-        transform.position = pos;
+        transform.position = ClampToGameplayPlane(transform.position);
     }
 
     private void Update()
@@ -91,7 +96,7 @@ public class EnemyBrain : MonoBehaviour
             return;
         }
 
-        float distance = Vector2.Distance(GetAttackOriginPosition(), player.position);
+        float distance = GetPlanarDistance(GetAttackOriginPosition(), player.position);
 
         // =========================
         // CHASE
@@ -112,10 +117,10 @@ public class EnemyBrain : MonoBehaviour
         }
 
         // Animación de movimiento
-        animatorDriver.SetMoveVelocity(agent.velocity);
+        animatorDriver.SetMoveVelocity(ToPlanar(agent.velocity));
     }
 
-    private Vector2 GetAttackOriginPosition()
+    private Vector3 GetAttackOriginPosition()
     {
         if (TryGetComponent(out EnemyAttackPublisher rangedAttackPublisher))
         {
@@ -138,7 +143,7 @@ public class EnemyBrain : MonoBehaviour
         if (player == null)
             return;
 
-        Vector2 toPlayer = (Vector2)player.position - GetAttackOriginPosition();
+        Vector2 toPlayer = ToPlanar(player.position - GetAttackOriginPosition());
         animatorDriver.FaceDirection(toPlayer);
     }
 
@@ -215,5 +220,30 @@ public class EnemyBrain : MonoBehaviour
     private bool IsAgentReady()
     {
         return agent != null && agent.enabled && agent.isOnNavMesh;
+    }
+
+    private Vector3 ClampToGameplayPlane(Vector3 position)
+    {
+        if (worldSpaceSettings != null)
+            return worldSpaceSettings.ClampToWalkPlane(position);
+
+        position.z = 0f;
+        return position;
+    }
+
+    private float GetPlanarDistance(Vector3 a, Vector3 b)
+    {
+        if (worldSpaceSettings != null)
+            return worldSpaceSettings.PlanarDistance(a, b);
+
+        return Vector2.Distance(a, b);
+    }
+
+    private Vector2 ToPlanar(Vector3 vector)
+    {
+        if (worldSpaceSettings != null)
+            return worldSpaceSettings.WorldVectorToPlanar(vector);
+
+        return vector;
     }
 }

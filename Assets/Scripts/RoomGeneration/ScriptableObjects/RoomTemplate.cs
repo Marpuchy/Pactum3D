@@ -100,6 +100,7 @@ public class RoomTemplate : ScriptableObject
 public class SpecialTileConfig
 {
     public CellType type;
+    public TileBase specialTileTile;
     public GameObject specialTilePrefab;
 
     [Range(0f, 1f)]

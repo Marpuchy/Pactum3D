@@ -12,15 +12,18 @@ public class WorldItemSpawner
         _instantiator = instantiator;
     }
 
-    public void SpawnItem(ItemDataSO itemData, int amount, Vector3 worldPos, Transform parent)
+    public GameObject SpawnItem(ItemDataSO itemData, int amount, Vector3 worldPos, Transform parent)
     {
-        if (itemData == null || _defaultPrefab == null) return;
+        if (itemData == null || _defaultPrefab == null)
+            return null;
 
         GameObject go = _instantiator != null
             ? _instantiator.InstantiatePrefab(_defaultPrefab, worldPos, Quaternion.identity, parent)
             : Object.Instantiate(_defaultPrefab, worldPos, Quaternion.identity, parent);
+
         WorldItem worldItem = go.GetComponent<WorldItem>();
-        if (worldItem != null) worldItem.Initialize(itemData);
+        if (worldItem != null)
+            worldItem.Initialize(itemData);
 
         PickupInteractable pickup = go.GetComponent<PickupInteractable>();
         if (pickup != null)
@@ -32,5 +35,9 @@ public class WorldItemSpawner
         AutoPickupCoin autoPickup = go.GetComponent<AutoPickupCoin>();
         if (autoPickup != null)
             autoPickup.Configure(itemData, amount);
+
+        Room2_5DPresentationUtility.EnsureDepthSorting(go, Room2_5DRenderPreset.Item);
+
+        return go;
     }
 }

@@ -8,7 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MainMenu.unity
     guid: f7bc46626688154b9a4040635f7df4b8
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Ismael.unity
     guid: 76dfcbdcbf89d06c28f91f44a01006d9
   - enabled: 1

@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 
-[RequireComponent(typeof(Collider2D))]
 public sealed class SpikeTrapTile : MonoBehaviour
 {
     private enum AnimationMode
@@ -65,6 +64,28 @@ public sealed class SpikeTrapTile : MonoBehaviour
     }
 
     private void OnTriggerExit2D(Collider2D col)
+    {
+        if (!IsValidTarget(col))
+            return;
+
+        isInside = false;
+        currentTarget = null;
+        StopDamageRoutine();
+    }
+
+    private void OnTriggerEnter(Collider col)
+    {
+        if (!IsValidTarget(col))
+            return;
+
+        isInside = true;
+        currentTarget = col.gameObject;
+
+        if (isOpen)
+            StartDamageRoutine();
+    }
+
+    private void OnTriggerExit(Collider col)
     {
         if (!IsValidTarget(col))
             return;
@@ -162,6 +183,11 @@ public sealed class SpikeTrapTile : MonoBehaviour
     }
 
     private bool IsValidTarget(Collider2D col)
+    {
+        return col.CompareTag("Player");
+    }
+
+    private bool IsValidTarget(Collider col)
     {
         return col.CompareTag("Player");
     }

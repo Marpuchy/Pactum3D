@@ -15,6 +15,9 @@ public sealed class PlayerInventoryInput : MonoBehaviour
     private void Awake()
     {
         interactor = GetComponent<Interactor>();
+        if (playerController == null)
+            playerController = GetComponent<PlayerController>();
+
         ResolveFactory();
         
         UpdateStats();

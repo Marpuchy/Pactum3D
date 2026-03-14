@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 
-[RequireComponent(typeof(Collider2D))]
 public abstract class DamageOverTimeTile : MonoBehaviour
 {
     [Header("Damage")]
@@ -29,6 +28,11 @@ public abstract class DamageOverTimeTile : MonoBehaviour
         return col.CompareTag("Player");
     }
 
+    protected virtual bool IsValidTarget(Collider col)
+    {
+        return col.CompareTag("Player");
+    }
+
     private void OnTriggerEnter2D(Collider2D col)
     {
         if (!IsValidTarget(col))
@@ -43,6 +47,26 @@ public abstract class DamageOverTimeTile : MonoBehaviour
 
 
     private void OnTriggerExit2D(Collider2D col)
+    {
+        if (!IsValidTarget(col))
+            return;
+
+        StopDamage();
+    }
+
+    private void OnTriggerEnter(Collider col)
+    {
+        if (!IsValidTarget(col))
+            return;
+
+        StopDamage();
+
+        isInside = true;
+        PlayAudio();
+        damageRoutine = StartCoroutine(DamageLoop(col.gameObject));
+    }
+
+    private void OnTriggerExit(Collider col)
     {
         if (!IsValidTarget(col))
             return;

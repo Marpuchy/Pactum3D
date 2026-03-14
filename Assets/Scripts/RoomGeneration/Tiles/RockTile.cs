@@ -45,8 +45,12 @@ public class RockTile : BreakableBase
 
     private void DisableColliders()
     {
-        var colliders = GetComponentsInChildren<Collider2D>();
-        for (int i = 0; i < colliders.Length; i++)
-            colliders[i].enabled = false;
+        Collider2D[] colliders2D = GetComponentsInChildren<Collider2D>();
+        for (int i = 0; i < colliders2D.Length; i++)
+            colliders2D[i].enabled = false;
+
+        Collider[] colliders3D = GetComponentsInChildren<Collider>();
+        for (int i = 0; i < colliders3D.Length; i++)
+            colliders3D[i].enabled = false;
     }
 }
