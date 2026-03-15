@@ -5,6 +5,7 @@ public enum Room2_5DRenderPreset
 {
     Character,
     Door,
+    Wall,
     Item,
     Prop,
     GroundProp
@@ -14,9 +15,10 @@ public static class Room2_5DPresentationUtility
 {
     private const int DefaultOrdersPerUnit = 16;
     private const int CharacterSortingBase = 1000;
-    private const int DoorSortingBase = 1100;
-    private const int ItemSortingBase = 900;
-    private const int PropSortingBase = 950;
+    private const int WallSortingBase = 1000;
+    private const int DoorSortingBase = 1000;
+    private const int ItemSortingBase = 1000;
+    private const int PropSortingBase = 1000;
     private const int GroundPropSortingBase = 850;
     private static Material runtimeXZSpriteMaterial;
 
@@ -66,6 +68,8 @@ public static class Room2_5DPresentationUtility
         {
             case Room2_5DRenderPreset.Door:
                 return DoorSortingBase;
+            case Room2_5DRenderPreset.Wall:
+                return WallSortingBase;
             case Room2_5DRenderPreset.Item:
                 return ItemSortingBase;
             case Room2_5DRenderPreset.Prop:

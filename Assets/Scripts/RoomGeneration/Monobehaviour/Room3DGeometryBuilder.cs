@@ -14,6 +14,7 @@ public sealed class Room3DGeometryBuilder : MonoBehaviour
     [SerializeField] private bool buildOnlyForXZProjection = true;
     [SerializeField] private bool buildVisibleFloor = false;
     [SerializeField] private bool buildVisibleWalls = false;
+    [SerializeField] private bool buildWallStructuresInXZ = false;
     [SerializeField] private bool generateColliders = true;
     [SerializeField, Min(0.01f)] private float floorThickness = 0.2f;
     [SerializeField, Min(0f)] private float visibleFloorSink = 0.08f;
@@ -50,7 +51,9 @@ public sealed class Room3DGeometryBuilder : MonoBehaviour
             BuildVisibleFloor(room, geometryRoot);
 
         BuildWalkSurface(room, geometryRoot);
-        BuildWalls(room, geometryRoot);
+
+        if (!worldSpaceSettings.UsesXZPlane || buildWallStructuresInXZ)
+            BuildWalls(room, geometryRoot);
     }
 
     private void BuildVisibleFloor(Room room, Transform parent)

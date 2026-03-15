@@ -24,6 +24,8 @@ public class DoorController : MonoBehaviour, ITriggerRelay3DReceiver
     private SpriteRenderer spriteRenderer;
     private DoorView doorView;
     private DoorSpriteSet activeSprites;
+    private DoorSpriteSet sharedSprites;
+    private bool useSharedSprites;
     private bool hasStarted;
     public bool isOpen { get; private set; }
 
@@ -107,6 +109,27 @@ public class DoorController : MonoBehaviour, ITriggerRelay3DReceiver
         SyncFromView();
     }
 
+    public void ConfigureSharedSprites(DoorSpriteSet shared, bool enabled)
+    {
+        sharedSprites = HasSprites(shared) ? shared : null;
+        useSharedSprites = enabled && sharedSprites != null;
+        SyncFromView();
+    }
+
+    public DoorSpriteSet ResolvePreferredSharedSprites()
+    {
+        if (HasSprites(upSprites))
+            return upSprites;
+        if (HasSprites(downSprites))
+            return downSprites;
+        if (HasSprites(leftSprites))
+            return leftSprites;
+        if (HasSprites(rightSprites))
+            return rightSprites;
+
+        return null;
+    }
+
     public void ConfigureRuntime3DColliders(Collider block, Collider trigger)
     {
         blockCollider3D = block;
@@ -116,6 +139,9 @@ public class DoorController : MonoBehaviour, ITriggerRelay3DReceiver
 
     public Sprite GetClosedSprite(DoorDirection direction)
     {
+        if (useSharedSprites && sharedSprites != null && sharedSprites.closed != null)
+            return sharedSprites.closed;
+
         DoorSpriteSet set = ResolveSpriteSet(direction);
         if (set != null && set.closed != null)
             return set.closed;
@@ -132,7 +158,7 @@ public class DoorController : MonoBehaviour, ITriggerRelay3DReceiver
 
     private void ApplyDirectionalSprites(DoorDirection direction)
     {
-        activeSprites = ResolveSpriteSet(direction);
+        activeSprites = useSharedSprites ? sharedSprites : ResolveSpriteSet(direction);
 
         if (!HasSprites(activeSprites))
             activeSprites = GetFallbackSprites();

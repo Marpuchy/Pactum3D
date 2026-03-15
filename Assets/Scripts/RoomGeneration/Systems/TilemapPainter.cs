@@ -4,6 +4,7 @@ using UnityEngine.Tilemaps;
 
 public class TilemapPainter
 {
+    private readonly bool useVerticalWallSpritePresentation;
     private readonly Tilemap collisionTilemap;
     private readonly Tilemap floorTilemap;
     private readonly Tilemap wallBackTilemap;
@@ -46,6 +47,7 @@ public class TilemapPainter
         wallFrontTilemap = layeredTilemaps != null ? layeredTilemaps.WallFrontTilemap : null;
         useLayeredVisuals = layeredTilemaps != null && layeredTilemaps.HasLayeredVisuals && collisionTilemap != null;
         foregroundWallRows = layeredTilemaps != null ? layeredTilemaps.ForegroundWallRows : 1;
+        useVerticalWallSpritePresentation = RoomWorldSpaceSettings.Current != null && RoomWorldSpaceSettings.Current.UsesXZPlane;
 
         floorTile = template.floorTile;
         wallFallback = template.wallTile;
@@ -124,6 +126,9 @@ public class TilemapPainter
 
     private void PaintWall(Room room, int x, int y, Vector3Int pos)
     {
+        if (useVerticalWallSpritePresentation)
+            return;
+
         TileBase wallTile = ResolveWallTile(room, x, y);
         if (wallTile == null || collisionTilemap == null)
             return;
@@ -131,7 +136,7 @@ public class TilemapPainter
         collisionTilemap.SetTile(pos, wallTile);
         collisionTilemap.SetColliderType(pos, Tile.ColliderType.Grid);
 
-        if (!useLayeredVisuals)
+        if (!useLayeredVisuals || useVerticalWallSpritePresentation)
             return;
 
         Tilemap targetVisualTilemap = ShouldPaintWallInForeground(y)
@@ -193,6 +198,9 @@ public class TilemapPainter
 
     private void PaintDoorBackgrounds(Room room)
     {
+        if (useVerticalWallSpritePresentation)
+            return;
+
         if (room.Doors == null || room.Doors.Count == 0)
             return;
 
@@ -207,8 +215,7 @@ public class TilemapPainter
                 collisionTilemap.SetTile(pos, null);
                 collisionTilemap.SetColliderType(pos, Tile.ColliderType.None);
             }
-
-            Tilemap targetTilemap = useLayeredVisuals
+            Tilemap targetTilemap = useLayeredVisuals && !useVerticalWallSpritePresentation
                 ? ResolveDoorVisualTilemap()
                 : collisionTilemap;
 

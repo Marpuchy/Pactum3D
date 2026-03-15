@@ -71,7 +71,7 @@ public class SpecialTileSpawner
                 continue;
             }
 
-            Room2_5DPresentationUtility.EnsureDepthSorting(instance, Room2_5DRenderPreset.GroundProp);
+            Room2_5DPresentationUtility.EnsureDepthSorting(instance, ResolveRenderPreset(type));
         }
     }
 
@@ -189,6 +189,13 @@ public class SpecialTileSpawner
     private static bool ShouldUsePlanarXZPresentation(CellType type)
     {
         return type == CellType.Spike;
+    }
+
+    private static Room2_5DRenderPreset ResolveRenderPreset(CellType type)
+    {
+        return ShouldUsePlanarXZPresentation(type)
+            ? Room2_5DRenderPreset.GroundProp
+            : Room2_5DRenderPreset.Prop;
     }
 
     private static void AlignToXZPlane(GameObject instance)
