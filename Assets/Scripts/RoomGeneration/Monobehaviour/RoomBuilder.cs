@@ -16,6 +16,7 @@ public class RoomBuilder : MonoBehaviour
     private const string FlyingAgentTypeName = "Flying";
     private const float AgentRebindMaxDistance = 128f;
     private const float DefaultSpawnedContentHeightOffset = 0.06f;
+    private const string RuntimePhysicsHostName = "Runtime3DPhysics";
 
     private static readonly FieldInfo NavMeshModifierAffectedAgentsField =
         typeof(NavMeshModifier).GetField("m_AffectedAgents", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -1165,6 +1166,10 @@ public class RoomBuilder : MonoBehaviour
         if (!Uses3DNavigation() || instance == null || controller == null)
             return;
 
+        GameObject physicsHost = GetOrCreateRuntimePhysicsHost(instance);
+        if (physicsHost == null)
+            return;
+
         float cellSize = worldSpaceSettings != null ? worldSpaceSettings.CellSize : 1f;
         float doorThickness = Mathf.Max(0.18f, cellSize * 0.22f);
         float doorWidth = Mathf.Max(0.6f, cellSize * 0.92f);
@@ -1175,17 +1180,45 @@ public class RoomBuilder : MonoBehaviour
             : new Vector3(doorWidth, doorHeight, doorThickness);
         Vector3 center = new Vector3(0f, doorHeight * 0.5f, 0f);
 
-        BoxCollider blockCollider = instance.AddComponent<BoxCollider>();
+        BoxCollider blockCollider = physicsHost.AddComponent<BoxCollider>();
+        if (blockCollider == null)
+            return;
+
         blockCollider.isTrigger = false;
         blockCollider.size = size;
         blockCollider.center = center;
 
-        BoxCollider triggerCollider = instance.AddComponent<BoxCollider>();
+        BoxCollider triggerCollider = physicsHost.AddComponent<BoxCollider>();
+        if (triggerCollider == null)
+            return;
+
         triggerCollider.isTrigger = true;
         triggerCollider.size = size;
         triggerCollider.center = center;
 
+        TriggerRelay3D relay = physicsHost.GetComponent<TriggerRelay3D>();
+        if (relay == null)
+            relay = physicsHost.AddComponent<TriggerRelay3D>();
+
+        relay?.Configure(controller);
         controller.ConfigureRuntime3DColliders(blockCollider, triggerCollider);
+    }
+
+    private static GameObject GetOrCreateRuntimePhysicsHost(GameObject instance)
+    {
+        if (instance == null)
+            return null;
+
+        Transform existing = instance.transform.Find(RuntimePhysicsHostName);
+        if (existing != null)
+            return existing.gameObject;
+
+        GameObject host = new GameObject(RuntimePhysicsHostName);
+        host.transform.SetParent(instance.transform, false);
+        host.transform.localPosition = Vector3.zero;
+        host.transform.localRotation = Quaternion.Inverse(instance.transform.localRotation);
+        host.transform.localScale = Vector3.one;
+        return host;
     }
 
     private static void DisableSpritePresentation(GameObject instance)

@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-public abstract class DamageOverTimeTile : MonoBehaviour
+public abstract class DamageOverTimeTile : MonoBehaviour, ITriggerRelay3DReceiver
 {
     [Header("Damage")]
     [SerializeField] protected int damagePerTick = 1;
@@ -56,6 +56,11 @@ public abstract class DamageOverTimeTile : MonoBehaviour
 
     private void OnTriggerEnter(Collider col)
     {
+        HandleTriggerEnter3D(col);
+    }
+
+    public void HandleTriggerEnter3D(Collider col)
+    {
         if (!IsValidTarget(col))
             return;
 
@@ -67,6 +72,11 @@ public abstract class DamageOverTimeTile : MonoBehaviour
     }
 
     private void OnTriggerExit(Collider col)
+    {
+        HandleTriggerExit3D(col);
+    }
+
+    public void HandleTriggerExit3D(Collider col)
     {
         if (!IsValidTarget(col))
             return;

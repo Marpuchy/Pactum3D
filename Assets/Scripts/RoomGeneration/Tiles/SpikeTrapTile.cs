@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-public sealed class SpikeTrapTile : MonoBehaviour
+public sealed class SpikeTrapTile : MonoBehaviour, ITriggerRelay3DReceiver
 {
     private enum AnimationMode
     {
@@ -75,6 +75,11 @@ public sealed class SpikeTrapTile : MonoBehaviour
 
     private void OnTriggerEnter(Collider col)
     {
+        HandleTriggerEnter3D(col);
+    }
+
+    public void HandleTriggerEnter3D(Collider col)
+    {
         if (!IsValidTarget(col))
             return;
 
@@ -86,6 +91,11 @@ public sealed class SpikeTrapTile : MonoBehaviour
     }
 
     private void OnTriggerExit(Collider col)
+    {
+        HandleTriggerExit3D(col);
+    }
+
+    public void HandleTriggerExit3D(Collider col)
     {
         if (!IsValidTarget(col))
             return;

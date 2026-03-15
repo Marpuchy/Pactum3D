@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.Tilemaps;
+using Zenject;
 
 [DisallowMultipleComponent]
 public class PlayerController : MonoBehaviour
@@ -69,6 +70,7 @@ public class PlayerController : MonoBehaviour
     private CapsuleCollider capsule3D;
     private NavMeshAgent navMeshAgent;
     private RoomWorldSpaceSettings worldSpaceSettings;
+    private IPlayerTransformRegistry playerTransformRegistry;
     private IPlayerDataService playerDataService;
     private Vector2 rawInput;
     private Vector2 input;
@@ -118,6 +120,7 @@ public class PlayerController : MonoBehaviour
         RefreshMovementTagState();
         Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Character);
         EnsureXZVisualProxy();
+        RegisterAsCurrentPlayerTransform();
     }
 
     private void Start()
@@ -146,15 +149,25 @@ public class PlayerController : MonoBehaviour
         RefreshMovementTagState();
         Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Character);
         EnsureXZVisualProxy();
+        RegisterAsCurrentPlayerTransform();
     }
 
     private void OnDisable()
     {
+        playerTransformRegistry?.Unregister(transform);
+
         if (statResolver != null)
             statResolver.StatsChanged -= HandleStatsChanged;
 
         if (flyingCollisionBypassActive)
             ApplyFlyingCollisionBypass(false);
+    }
+
+    [Inject]
+    private void Construct([InjectOptional] IPlayerTransformRegistry injectedPlayerTransformRegistry)
+    {
+        playerTransformRegistry = injectedPlayerTransformRegistry;
+        RegisterAsCurrentPlayerTransform();
     }
 
     private void Update()
@@ -954,6 +967,11 @@ public class PlayerController : MonoBehaviour
 
         if (GetComponent<PlayerInventoryInput>() == null)
             gameObject.AddComponent<PlayerInventoryInput>();
+    }
+
+    private void RegisterAsCurrentPlayerTransform()
+    {
+        playerTransformRegistry?.Register(transform);
     }
 
     private float ResolveLocal3DColliderRadius()

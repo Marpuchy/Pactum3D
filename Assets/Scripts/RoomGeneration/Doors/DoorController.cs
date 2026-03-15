@@ -2,7 +2,7 @@ using UnityEngine;
 
 [RequireComponent(typeof(SpriteRenderer))]
 [RequireComponent(typeof(DoorView))]
-public class DoorController : MonoBehaviour
+public class DoorController : MonoBehaviour, ITriggerRelay3DReceiver
 {
     [Header("Directional Sprites")]
     [SerializeField] private DoorSpriteSet upSprites;
@@ -247,12 +247,21 @@ public class DoorController : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        HandleTriggerEnter3D(other);
+    }
+
+    public void HandleTriggerEnter3D(Collider other)
+    {
         if (!isOpen) return;
         if (!other.CompareTag("Player")) return;
 
         if (triggerCollider3D != null)
             triggerCollider3D.enabled = false;
         doorEnteredEvent?.Raise();
+    }
+
+    public void HandleTriggerExit3D(Collider other)
+    {
     }
 
     

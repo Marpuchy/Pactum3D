@@ -9,6 +9,10 @@ namespace Injections
         {
             ItemFactory.SetInstantiator(Container);
 
+            Container.BindInterfacesTo<PlayerTransformRegistry>()
+                .AsSingle()
+                .IfNotBound();
+
             Container.Bind<IPlayerDataService>()
                 .To<PlayerDataService>()
                 .AsSingle()

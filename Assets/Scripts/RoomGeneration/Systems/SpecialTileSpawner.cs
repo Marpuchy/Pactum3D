@@ -5,9 +5,12 @@ using UnityEngine.Rendering;
 public class SpecialTileSpawner
 {
     private const string ContainerName = "SpecialTiles";
+    private const string PhysicsHostName = "Runtime3DPhysics";
     private const float DefaultSpecialTileHeightOffset = 0.06f;
     private const float DefaultBlockingColliderHeight = 1.15f;
     private const float DefaultTriggerColliderHeight = 1.1f;
+    private const int FlatTileSortingOrder = 24;
+    private static Material runtimeFlatTileSpriteMaterial;
 
     private readonly Dictionary<CellType, GameObject> prefabs;
     private readonly HashSet<CellType> tileBackedTypes;
@@ -51,10 +54,20 @@ public class SpecialTileSpawner
 
             Vector3 worldPos = ResolveWorldPosition(pos);
             GameObject instance = Object.Instantiate(prefab, worldPos, Quaternion.identity, container);
-            ConfigureRuntimePhysics(type, instance);
+            bool usePlanarPresentation = ShouldUsePlanarXZPresentation(type);
+            if (usePlanarPresentation)
+                AlignToXZPlane(instance);
+
+            ConfigureRuntimePhysics(type, instance, usePlanarPresentation);
             if (tileBackedTypes.Contains(type))
             {
                 DisableSpritePresentation(instance);
+                continue;
+            }
+
+            if (usePlanarPresentation)
+            {
+                ConfigurePlanarTilePresentation(instance);
                 continue;
             }
 
@@ -119,7 +132,7 @@ public class SpecialTileSpawner
         return result;
     }
 
-    private void ConfigureRuntimePhysics(CellType type, GameObject instance)
+    private void ConfigureRuntimePhysics(CellType type, GameObject instance, bool usePlanarPresentation)
     {
         if (instance == null || worldSpaceSettings == null || !worldSpaceSettings.UsesXZPlane)
             return;
@@ -141,16 +154,120 @@ public class SpecialTileSpawner
         if (instance == null)
             return;
 
-        Collider existingCollider = instance.GetComponent<Collider>();
+        GameObject physicsHost = GetOrCreate3DPhysicsHost(instance);
+        if (physicsHost == null)
+            return;
+
+        Collider existingCollider = physicsHost.GetComponent<Collider>();
         BoxCollider collider = existingCollider as BoxCollider;
         if (collider == null)
-            collider = instance.AddComponent<BoxCollider>();
+            collider = physicsHost.AddComponent<BoxCollider>();
+
+        if (collider == null)
+            return;
 
         float cellSize = worldSpaceSettings != null ? worldSpaceSettings.CellSize : 1f;
         float planarSize = Mathf.Max(0.1f, cellSize * 0.88f);
         collider.isTrigger = isTrigger;
         collider.size = new Vector3(planarSize, height, planarSize);
         collider.center = new Vector3(0f, height * 0.5f, 0f);
+
+        TriggerRelay3D relay = physicsHost.GetComponent<TriggerRelay3D>();
+        if (isTrigger)
+        {
+            if (relay == null)
+                relay = physicsHost.AddComponent<TriggerRelay3D>();
+
+            relay?.Configure(instance.transform);
+        }
+        else if (relay != null)
+        {
+            Object.Destroy(relay);
+        }
+    }
+
+    private static bool ShouldUsePlanarXZPresentation(CellType type)
+    {
+        return type == CellType.Spike;
+    }
+
+    private static void AlignToXZPlane(GameObject instance)
+    {
+        if (instance == null)
+            return;
+
+        instance.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+    }
+
+    private static GameObject GetOrCreate3DPhysicsHost(GameObject instance)
+    {
+        if (instance == null)
+            return null;
+
+        Transform existing = instance.transform.Find(PhysicsHostName);
+        if (existing != null)
+            return existing.gameObject;
+
+        GameObject host = new GameObject(PhysicsHostName);
+        host.transform.SetParent(instance.transform, false);
+        host.transform.localPosition = Vector3.zero;
+        host.transform.localRotation = Quaternion.Inverse(instance.transform.localRotation);
+        host.transform.localScale = Vector3.one;
+        return host;
+    }
+
+    private static void ConfigurePlanarTilePresentation(GameObject instance)
+    {
+        if (instance == null)
+            return;
+
+        Material spriteMaterial = ResolveFlatTileSpriteMaterial();
+
+        SpriteRenderer[] renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            SpriteRenderer renderer = renderers[i];
+            if (renderer == null)
+                continue;
+
+            if (spriteMaterial != null)
+                renderer.sharedMaterial = spriteMaterial;
+
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.allowOcclusionWhenDynamic = false;
+            renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, FlatTileSortingOrder);
+        }
+
+        SortingGroup[] sortingGroups = instance.GetComponentsInChildren<SortingGroup>(true);
+        for (int i = 0; i < sortingGroups.Length; i++)
+        {
+            SortingGroup group = sortingGroups[i];
+            if (group == null)
+                continue;
+
+            group.sortingOrder = Mathf.Max(group.sortingOrder, FlatTileSortingOrder);
+        }
+    }
+
+    private static Material ResolveFlatTileSpriteMaterial()
+    {
+        if (runtimeFlatTileSpriteMaterial != null)
+            return runtimeFlatTileSpriteMaterial;
+
+        Shader shader =
+            Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default") ??
+            Shader.Find("Sprites/Default");
+
+        if (shader == null)
+            return null;
+
+        runtimeFlatTileSpriteMaterial = new Material(shader)
+        {
+            name = "RuntimeFlatTileSpriteUnlit"
+        };
+
+        return runtimeFlatTileSpriteMaterial;
     }
 
     private static bool ShouldUseTileOnlyVisual(SpecialTileConfig config)

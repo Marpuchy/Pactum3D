@@ -50,7 +50,7 @@ public static class Room2_5DPresentationUtility
         }
 
         EnsureXZSpriteRendering(instance);
-        EnsureBillboardIfNeeded(instance);
+        EnsureBillboardIfNeeded(instance, preset);
         return sorter;
     }
 
@@ -77,16 +77,27 @@ public static class Room2_5DPresentationUtility
         }
     }
 
-    private static void EnsureBillboardIfNeeded(GameObject instance)
+    private static void EnsureBillboardIfNeeded(GameObject instance, Room2_5DRenderPreset preset)
     {
         RoomWorldSpaceSettings worldSpace = RoomWorldSpaceSettings.Current;
         if (instance == null || worldSpace == null || !worldSpace.UsesXZPlane)
             return;
 
-        if (instance.GetComponent<BillboardFacingCamera>() != null)
-            return;
+        BillboardFacingCamera billboard = instance.GetComponent<BillboardFacingCamera>();
+        bool shouldBillboard = preset == Room2_5DRenderPreset.Character;
 
-        instance.AddComponent<BillboardFacingCamera>();
+        if (!shouldBillboard)
+        {
+            if (billboard != null)
+                billboard.enabled = false;
+
+            return;
+        }
+
+        if (billboard == null)
+            billboard = instance.AddComponent<BillboardFacingCamera>();
+
+        billboard.enabled = true;
     }
 
     private static void EnsureXZSpriteRendering(GameObject instance)

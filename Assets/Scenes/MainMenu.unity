@@ -361,7 +361,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MainMenuController
   meleeToggle: {fileID: 1749473472}
   rangedToggle: {fileID: 1315020879}
-  sceneName: NavmeshSalas
+  sceneName: LevelScene
 --- !u!114 &553781494
 MonoBehaviour:
   m_ObjectHideFlags: 0

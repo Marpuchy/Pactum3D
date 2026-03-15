@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Zenject;
 
 [RequireComponent(typeof(Camera))]
 public class CameraFollow2D : MonoBehaviour
@@ -7,14 +8,13 @@ public class CameraFollow2D : MonoBehaviour
     [SerializeField] private Transform target;
     [SerializeField] private float smoothTime = 0.15f;
     [SerializeField] private Vector3 followOffset;
+    [SerializeField] private bool useSceneOffsetWhenFollowOffsetUnset = false;
     [Header("XZ View")]
     [SerializeField] private bool applyXZDiagonalView = true;
     [SerializeField] private bool forcePerspectiveForXZ = true;
     [SerializeField] private Vector3 xzDiagonalEulerAngles = new Vector3(30f, 0f, 0f);
     [SerializeField] private Vector3 defaultXZFollowOffset = new Vector3(0f, 0f, -18f);
     [SerializeField] private float defaultXZCameraHeight = 8f;
-    [SerializeField] private float defaultXZFieldOfView = 40f;
-    [SerializeField] private bool forceDefaultXZFollowOffset = true;
     [SerializeField] private bool clampPerspectiveXZToBounds = false;
     [Header("Bounds")]
     [SerializeField] private Tilemap boundsTilemap;
@@ -31,6 +31,17 @@ public class CameraFollow2D : MonoBehaviour
     private Vector3 lastShakeOffset;
     private float baseCameraZ;
     private float baseCameraY;
+    private bool hasCachedSceneFollowOffset;
+    private Vector3 cachedSceneFollowOffset;
+    private Transform cachedSceneFollowTarget;
+    private Coroutine pendingRoomSpawnSnap;
+    private IPlayerTransformProvider playerTransformProvider;
+
+    [Inject]
+    private void Construct([InjectOptional] IPlayerTransformProvider injectedPlayerTransformProvider)
+    {
+        playerTransformProvider = injectedPlayerTransformProvider;
+    }
 
     private void Awake()
     {
@@ -43,6 +54,7 @@ public class CameraFollow2D : MonoBehaviour
 
         worldSpaceSettings = ResolveWorldSpaceSettings();
         ResolveTargetIfNeeded();
+        CacheSceneFollowOffsetIfNeeded();
         ApplyProjectionModeIfNeeded();
         ApplyXZViewRotationIfNeeded();
         RefreshBounds();
@@ -58,11 +70,18 @@ public class CameraFollow2D : MonoBehaviour
     {
         if (roomSpawnEvent != null)
             roomSpawnEvent.OnRoomSpawn -= HandleRoomSpawn;
+
+        if (pendingRoomSpawnSnap != null)
+        {
+            StopCoroutine(pendingRoomSpawnSnap);
+            pendingRoomSpawnSnap = null;
+        }
     }
 
     private void LateUpdate()
     {
         ResolveTargetIfNeeded();
+        CacheSceneFollowOffsetIfNeeded();
         if (!target)
             return;
 
@@ -93,11 +112,25 @@ public class CameraFollow2D : MonoBehaviour
 
     private void HandleRoomSpawn(Vector3 spawnPosition)
     {
+        if (pendingRoomSpawnSnap != null)
+            StopCoroutine(pendingRoomSpawnSnap);
+
+        pendingRoomSpawnSnap = StartCoroutine(HandleRoomSpawnDeferred());
+    }
+
+    private System.Collections.IEnumerator HandleRoomSpawnDeferred()
+    {
+        yield return null;
+
         RefreshBounds();
         ResolveTargetIfNeeded();
+        CacheSceneFollowOffsetIfNeeded();
 
         if (!target)
-            return;
+        {
+            pendingRoomSpawnSnap = null;
+            yield break;
+        }
 
         ApplyXZViewRotationIfNeeded();
         velocity = Vector3.zero;
@@ -109,6 +142,7 @@ public class CameraFollow2D : MonoBehaviour
         Vector3 shakeOffset = ResolveShakeOffset();
         transform.position = targetPos + shakeOffset;
         lastShakeOffset = shakeOffset;
+        pendingRoomSpawnSnap = null;
     }
 
     private void RefreshBounds()
@@ -208,19 +242,30 @@ public class CameraFollow2D : MonoBehaviour
 
     private Vector3 ResolveTargetPosition()
     {
-        Vector3 effectiveFollowOffset = GetEffectiveFollowOffset();
-        Vector3 targetPos = target.position + effectiveFollowOffset;
         if (UsesXZBounds())
-        {
-            float resolvedHeight = forceDefaultXZFollowOffset
-                ? defaultXZCameraHeight + effectiveFollowOffset.y
-                : baseCameraY + effectiveFollowOffset.y;
-            targetPos.y = resolvedHeight;
-            return targetPos;
-        }
+            return target.position + ResolveXZFollowOffset();
 
-        targetPos.z = baseCameraZ + effectiveFollowOffset.z;
+        if (TryGetSceneFollowOffset(out Vector3 xySceneFollowOffset))
+            return target.position + xySceneFollowOffset;
+
+        Vector3 targetPos = target.position + followOffset;
+        targetPos.z = baseCameraZ + followOffset.z;
         return targetPos;
+    }
+
+    private bool TryGetSceneFollowOffset(out Vector3 sceneFollowOffset)
+    {
+        sceneFollowOffset = Vector3.zero;
+
+        if (!ShouldUseSceneFollowOffset())
+            return false;
+
+        CacheSceneFollowOffsetIfNeeded();
+        if (!hasCachedSceneFollowOffset)
+            return false;
+
+        sceneFollowOffset = cachedSceneFollowOffset;
+        return true;
     }
 
     private Vector3 ResolveShakeOffset()
@@ -250,18 +295,11 @@ public class CameraFollow2D : MonoBehaviour
         return settings != null && settings.UsesXZPlane;
     }
 
-    private Vector3 GetEffectiveFollowOffset()
+    private bool ShouldUseSceneFollowOffset()
     {
-        if (!UsesXZBounds())
-            return followOffset;
-
-        if (followOffset.sqrMagnitude > 0.0001f)
-            return followOffset;
-
-        if (forceDefaultXZFollowOffset)
-            return defaultXZFollowOffset;
-
-        return followOffset;
+        return useSceneOffsetWhenFollowOffsetUnset &&
+               target != null &&
+               followOffset.sqrMagnitude <= 0.0001f;
     }
 
     private void ApplyXZViewRotationIfNeeded()
@@ -274,11 +312,12 @@ public class CameraFollow2D : MonoBehaviour
 
     private void ApplyProjectionModeIfNeeded()
     {
-        if (cam == null || !UsesXZBounds() || !forcePerspectiveForXZ)
+        if (cam == null || !UsesXZBounds())
             return;
 
-        cam.orthographic = false;
-        cam.fieldOfView = defaultXZFieldOfView;
+        if (forcePerspectiveForXZ)
+            cam.orthographic = false;
+
     }
 
     private void ResolveTargetIfNeeded()
@@ -286,8 +325,34 @@ public class CameraFollow2D : MonoBehaviour
         if (target != null)
             return;
 
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player != null)
-            target = player.transform;
+        if (playerTransformProvider?.Current != null)
+            target = playerTransformProvider.Current;
+    }
+
+    private void CacheSceneFollowOffsetIfNeeded()
+    {
+        if (!useSceneOffsetWhenFollowOffsetUnset || target == null)
+            return;
+
+        if (hasCachedSceneFollowOffset && cachedSceneFollowTarget == target)
+            return;
+
+        cachedSceneFollowOffset = transform.position - target.position;
+        cachedSceneFollowTarget = target;
+        hasCachedSceneFollowOffset = true;
+    }
+
+    private Vector3 ResolveXZFollowOffset()
+    {
+        if (followOffset.sqrMagnitude > 0.0001f)
+            return followOffset;
+
+        if (TryGetSceneFollowOffset(out Vector3 sceneFollowOffset))
+            return sceneFollowOffset;
+
+        return new Vector3(
+            defaultXZFollowOffset.x,
+            defaultXZCameraHeight,
+            defaultXZFollowOffset.z);
     }
 }
