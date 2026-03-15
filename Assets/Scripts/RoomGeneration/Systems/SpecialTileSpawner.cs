@@ -10,7 +10,6 @@ public class SpecialTileSpawner
     private const float DefaultBlockingColliderHeight = 1.15f;
     private const float DefaultTriggerColliderHeight = 1.1f;
     private const int FlatTileSortingOrder = 24;
-    private static Material runtimeFlatTileSpriteMaterial;
 
     private readonly Dictionary<CellType, GameObject> prefabs;
     private readonly HashSet<CellType> tileBackedTypes;
@@ -228,8 +227,6 @@ public class SpecialTileSpawner
         if (instance == null)
             return;
 
-        Material spriteMaterial = ResolveFlatTileSpriteMaterial();
-
         SpriteRenderer[] renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
         for (int i = 0; i < renderers.Length; i++)
         {
@@ -237,12 +234,10 @@ public class SpecialTileSpawner
             if (renderer == null)
                 continue;
 
-            if (spriteMaterial != null)
-                renderer.sharedMaterial = spriteMaterial;
-
+            RestoreSceneCompatibleSpriteMaterial(renderer);
             renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            renderer.allowOcclusionWhenDynamic = false;
+            renderer.receiveShadows = true;
+            renderer.allowOcclusionWhenDynamic = true;
             renderer.sortingOrder = Mathf.Max(renderer.sortingOrder, FlatTileSortingOrder);
         }
 
@@ -257,24 +252,24 @@ public class SpecialTileSpawner
         }
     }
 
-    private static Material ResolveFlatTileSpriteMaterial()
+    private static void RestoreSceneCompatibleSpriteMaterial(SpriteRenderer renderer)
     {
-        if (runtimeFlatTileSpriteMaterial != null)
-            return runtimeFlatTileSpriteMaterial;
+        if (renderer == null)
+            return;
 
-        Shader shader =
-            Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default") ??
-            Shader.Find("Sprites/Default");
+        Material material = renderer.sharedMaterial;
+        if (material == null)
+            return;
 
-        if (shader == null)
-            return null;
+        string materialName = material.name;
+        if (string.IsNullOrEmpty(materialName))
+            return;
 
-        runtimeFlatTileSpriteMaterial = new Material(shader)
+        if (materialName.StartsWith("RuntimeFlatTileSpriteUnlit") ||
+            materialName.StartsWith("RuntimeXZSpriteUnlit"))
         {
-            name = "RuntimeFlatTileSpriteUnlit"
-        };
-
-        return runtimeFlatTileSpriteMaterial;
+            renderer.sharedMaterial = null;
+        }
     }
 
     private static bool ShouldUseTileOnlyVisual(SpecialTileConfig config)

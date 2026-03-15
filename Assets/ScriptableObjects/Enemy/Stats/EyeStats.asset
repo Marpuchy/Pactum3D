@@ -18,7 +18,7 @@ MonoBehaviour:
   attackDamage: 10
   attackSpeed: 1
   attackLocktime: 0.2
-  attackRange: 1
+  attackRange: 2
   detectionRange: 10
   hitReactThreshold: 30
   dashSpeed: 0

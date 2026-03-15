@@ -12,8 +12,14 @@ public sealed class XZSpriteVisualProxy : MonoBehaviour
     [SerializeField] private SpriteRenderer visualRenderer;
     [SerializeField] private float footPlaneOffset = 0.01f;
     [SerializeField] private float additionalVisualLift;
+    [SerializeField] private bool anchorToRootHeight = true;
+    [SerializeField] private bool useStableReferenceBottom;
+    [SerializeField] private bool useBillboard = true;
     [SerializeField] private bool updateEveryFrame = true;
     [SerializeField] private RoomWorldSpaceSettings worldSpaceSettings;
+    [SerializeField] private float referenceSpriteBottomLocalY;
+
+    private bool hasReferenceSpriteBottom;
 
     private void Awake()
     {
@@ -33,11 +39,18 @@ public sealed class XZSpriteVisualProxy : MonoBehaviour
             Sync();
     }
 
-    public void ConfigureRuntimeAnchoring(float footOffset, float additionalLift, bool continuousSync = true)
+    public void ConfigureRuntimeAnchoring(
+        float footOffset,
+        float additionalLift,
+        bool continuousSync = true,
+        bool billboard = true,
+        bool stableReferenceBottom = false)
     {
         footPlaneOffset = footOffset;
         additionalVisualLift = additionalLift;
         updateEveryFrame = continuousSync;
+        useBillboard = billboard;
+        useStableReferenceBottom = stableReferenceBottom;
     }
 
     public void Sync()
@@ -96,6 +109,12 @@ public sealed class XZSpriteVisualProxy : MonoBehaviour
 
         if (footPlaneOffset <= 0f)
             footPlaneOffset = DefaultFootPlaneOffset;
+
+        if (useStableReferenceBottom && !hasReferenceSpriteBottom && sourceRenderer != null && sourceRenderer.sprite != null)
+        {
+            referenceSpriteBottomLocalY = sourceRenderer.localBounds.min.y;
+            hasReferenceSpriteBottom = true;
+        }
     }
 
     private RoomWorldSpaceSettings ResolveWorldSpaceSettings()
@@ -124,8 +143,18 @@ public sealed class XZSpriteVisualProxy : MonoBehaviour
         if (visualRenderer == null)
             visualRenderer = visualRoot.gameObject.AddComponent<SpriteRenderer>();
 
-        if (visualRoot.GetComponent<BillboardFacingCamera>() == null)
-            visualRoot.gameObject.AddComponent<BillboardFacingCamera>();
+        BillboardFacingCamera billboard = visualRoot.GetComponent<BillboardFacingCamera>();
+        if (useBillboard)
+        {
+            if (billboard == null)
+                billboard = visualRoot.gameObject.AddComponent<BillboardFacingCamera>();
+
+            billboard.enabled = true;
+        }
+        else if (billboard != null)
+        {
+            billboard.enabled = false;
+        }
     }
 
     private void CopyRendererState()
@@ -155,14 +184,24 @@ public sealed class XZSpriteVisualProxy : MonoBehaviour
             return;
 
         float verticalScale = Mathf.Max(Mathf.Abs(transform.lossyScale.y), 0.0001f);
-        float spriteBottomLocalY = sourceRenderer.localBounds.min.y;
+        if (useStableReferenceBottom && !hasReferenceSpriteBottom)
+        {
+            referenceSpriteBottomLocalY = sourceRenderer.localBounds.min.y;
+            hasReferenceSpriteBottom = true;
+        }
+
+        float spriteBottomLocalY = useStableReferenceBottom && hasReferenceSpriteBottom
+            ? referenceSpriteBottomLocalY
+            : sourceRenderer.localBounds.min.y;
         float spriteBottomWorldOffset = spriteBottomLocalY * verticalScale;
-        float walkPlaneY = settings.Origin.y + settings.OrthogonalAxisOffset;
         float resolvedAdditionalLift = additionalVisualLift;
         if (resolvedAdditionalLift <= 0f)
             resolvedAdditionalLift = DefaultAdditionalVisualLift;
 
-        float desiredCenterWorldY = walkPlaneY + footPlaneOffset + resolvedAdditionalLift - spriteBottomWorldOffset;
+        float anchorWorldY = anchorToRootHeight
+            ? transform.position.y
+            : settings.Origin.y + settings.OrthogonalAxisOffset;
+        float desiredCenterWorldY = anchorWorldY + footPlaneOffset + resolvedAdditionalLift - spriteBottomWorldOffset;
         float localY = (desiredCenterWorldY - transform.position.y) / verticalScale;
 
         visualRoot.localPosition = new Vector3(0f, localY, 0f);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Tilemaps;
 using Unity.AI.Navigation;
 
@@ -48,6 +49,11 @@ public sealed class Room2_5DTilemapLayers : MonoBehaviour
                 collisionRenderer.enabled = false;
         }
 
+        ConfigureVisualTilemapRenderer(collisionTilemap, collisionTilemap == floorTilemap);
+        ConfigureVisualTilemapRenderer(floorTilemap, true);
+        ConfigureVisualTilemapRenderer(wallBackTilemap, true);
+        ConfigureVisualTilemapRenderer(wallFrontTilemap, true);
+
         DisablePresentationPhysics(floorTilemap);
         DisablePresentationPhysics(wallBackTilemap);
         DisablePresentationPhysics(wallFrontTilemap);
@@ -82,6 +88,16 @@ public sealed class Room2_5DTilemapLayers : MonoBehaviour
 
         if (tilemap.TryGetComponent(out NavMeshModifier navMeshModifier))
             navMeshModifier.ignoreFromBuild = true;
+    }
+
+    private static void ConfigureVisualTilemapRenderer(Tilemap tilemap, bool isVisible)
+    {
+        if (tilemap == null || !tilemap.TryGetComponent(out TilemapRenderer renderer))
+            return;
+
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
+        renderer.receiveShadows = isVisible;
+        renderer.allowOcclusionWhenDynamic = isVisible;
     }
 
     private static void AddIfValid(ICollection<Tilemap> target, Tilemap tilemap)

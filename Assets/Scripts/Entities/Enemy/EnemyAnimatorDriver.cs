@@ -35,6 +35,8 @@ public class EnemyAnimatorDriver : MonoBehaviour
     [SerializeField] private bool snapToFourDirections = true;
     [SerializeField] private float movingSpeedThreshold = 0.05f;
     [SerializeField] private Vector2 defaultFacing = Vector2.down;
+    [SerializeField] private float facingAxisHysteresis = 0.12f;
+    [SerializeField] private float facingSignDeadZone = 0.08f;
 
     [Header("Hit")]
     [SerializeField] private float baseHitAnimDuration = 0.3f;
@@ -52,6 +54,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
     [Header("Flip (legacy)")]
     [SerializeField] private bool facingRight = true;
     [SerializeField] private bool invertHorizontalFacing;
+    [SerializeField] private float horizontalFacingDeadZone = 0.06f;
     [SerializeField] private Transform flipRoot;
     private Animator animator;
     private bool isDead;
@@ -60,6 +63,9 @@ public class EnemyAnimatorDriver : MonoBehaviour
     private float cachedAnimatorSpeed = 1f;
 
     private Vector2 lastFacing;
+
+    public bool UsesFourDirectionalFacing => locomotionMode == LocomotionMode.FourDirections;
+    public bool UsesHorizontalFlipFacing => locomotionMode == LocomotionMode.FlipX;
 
     // =============================
     // LIFECYCLE
@@ -135,6 +141,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
         {
             if (b == this) continue;
             if (b is EnemyAnimatorDriver) continue;
+            if (b is XZSpriteVisualProxy) continue;
 
             b.enabled = false;
         }
@@ -172,11 +179,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
         float multiplier = Mathf.Clamp(normalized, minMultiplier, maxMultiplier);
         animator.SetFloat(SpeedMultiplierHash, multiplier);
 
-        if (velocity.x > 0.01f && !facingRight)
-            Flip(true);
-        else if (velocity.x < -0.01f && facingRight)
-            Flip(false);
-        ApplyHorizontalFacing(velocity.x, 0.01f);
+        ApplyHorizontalFacing(velocity.x, horizontalFacingDeadZone);
     }
 
     public void FaceDirection(Vector2 direction)
@@ -184,7 +187,22 @@ public class EnemyAnimatorDriver : MonoBehaviour
         if (isDead || animator == null)
             return;
 
-        ApplyHorizontalFacing(direction.x, 0.001f);
+        switch (locomotionMode)
+        {
+            case LocomotionMode.FourDirections:
+                Vector2 facing = snapToFourDirections ? ResolveStableCardinal(direction) : direction.normalized;
+                if (facing == Vector2.zero)
+                    return;
+
+                lastFacing = facing;
+                animator.SetFloat(MoveXHash, facing.x);
+                animator.SetFloat(MoveYHash, facing.y);
+                break;
+
+            default:
+                ApplyHorizontalFacing(direction.x, horizontalFacingDeadZone);
+                break;
+        }
     }
 
     private void ApplyHorizontalFacing(float horizontal, float threshold)
@@ -207,7 +225,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
         Vector2 facing;
         if (isMoving)
         {
-            facing = snapToFourDirections ? ToCardinal(velocity) : velocity.normalized;
+            facing = snapToFourDirections ? ResolveStableCardinal(velocity) : velocity.normalized;
             if (facing != Vector2.zero)
                 lastFacing = facing;
         }
@@ -236,6 +254,44 @@ public class EnemyAnimatorDriver : MonoBehaviour
             return new Vector2(Mathf.Sign(v.x), 0f);
 
         return new Vector2(0f, Mathf.Sign(v.y));
+    }
+
+    private Vector2 ResolveStableCardinal(Vector2 direction)
+    {
+        if (direction == Vector2.zero)
+            return lastFacing;
+
+        float ax = Mathf.Abs(direction.x);
+        float ay = Mathf.Abs(direction.y);
+
+        bool hadLastFacing = lastFacing != Vector2.zero;
+        bool lastWasHorizontal = hadLastFacing && Mathf.Abs(lastFacing.x) > Mathf.Abs(lastFacing.y);
+        bool keepHorizontal = lastWasHorizontal && ax + facingAxisHysteresis >= ay;
+        bool keepVertical = hadLastFacing && !lastWasHorizontal && ay + facingAxisHysteresis >= ax;
+
+        if (keepHorizontal)
+            return new Vector2(ResolveStableSign(direction.x, lastFacing.x), 0f);
+
+        if (keepVertical)
+            return new Vector2(0f, ResolveStableSign(direction.y, lastFacing.y));
+
+        if (ax > ay)
+            return new Vector2(ResolveStableSign(direction.x, hadLastFacing ? lastFacing.x : 1f), 0f);
+
+        return new Vector2(0f, ResolveStableSign(direction.y, hadLastFacing ? lastFacing.y : -1f));
+    }
+
+    private float ResolveStableSign(float value, float fallback)
+    {
+        if (Mathf.Abs(value) <= facingSignDeadZone)
+        {
+            if (Mathf.Abs(fallback) > 0.0001f)
+                return Mathf.Sign(fallback);
+
+            return 1f;
+        }
+
+        return Mathf.Sign(value);
     }
 
     private void Flip(bool faceRight)

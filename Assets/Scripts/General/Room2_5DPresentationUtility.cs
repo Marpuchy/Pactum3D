@@ -8,7 +8,8 @@ public enum Room2_5DRenderPreset
     Wall,
     Item,
     Prop,
-    GroundProp
+    GroundProp,
+    Shadow
 }
 
 public static class Room2_5DPresentationUtility
@@ -20,8 +21,7 @@ public static class Room2_5DPresentationUtility
     private const int ItemSortingBase = 1000;
     private const int PropSortingBase = 1000;
     private const int GroundPropSortingBase = 850;
-    private static Material runtimeXZSpriteMaterial;
-
+    private const int ShadowSortingBase = 900;
     public static SpriteDepthSorter EnsureDepthSorting(
         GameObject instance,
         Room2_5DRenderPreset preset,
@@ -76,6 +76,8 @@ public static class Room2_5DPresentationUtility
                 return PropSortingBase;
             case Room2_5DRenderPreset.GroundProp:
                 return GroundPropSortingBase;
+            case Room2_5DRenderPreset.Shadow:
+                return ShadowSortingBase;
             default:
                 return CharacterSortingBase;
         }
@@ -114,39 +116,36 @@ public static class Room2_5DPresentationUtility
         if (renderers == null || renderers.Length == 0)
             return;
 
-        Material spriteMaterial = ResolveXZSpriteMaterial();
         for (int i = 0; i < renderers.Length; i++)
         {
             SpriteRenderer renderer = renderers[i];
             if (renderer == null)
                 continue;
 
-            if (spriteMaterial != null)
-                renderer.sharedMaterial = spriteMaterial;
-
+            RestoreSceneCompatibleSpriteMaterial(renderer);
             renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            renderer.allowOcclusionWhenDynamic = false;
+            renderer.receiveShadows = true;
+            renderer.allowOcclusionWhenDynamic = true;
         }
     }
 
-    private static Material ResolveXZSpriteMaterial()
+    private static void RestoreSceneCompatibleSpriteMaterial(SpriteRenderer renderer)
     {
-        if (runtimeXZSpriteMaterial != null)
-            return runtimeXZSpriteMaterial;
+        if (renderer == null)
+            return;
 
-        Shader shader =
-            Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default") ??
-            Shader.Find("Sprites/Default");
+        Material material = renderer.sharedMaterial;
+        if (material == null)
+            return;
 
-        if (shader == null)
-            return null;
+        string materialName = material.name;
+        if (string.IsNullOrEmpty(materialName))
+            return;
 
-        runtimeXZSpriteMaterial = new Material(shader)
+        if (materialName.StartsWith("RuntimeXZSpriteUnlit") ||
+            materialName.StartsWith("RuntimeFlatTileSpriteUnlit"))
         {
-            name = "RuntimeXZSpriteUnlit"
-        };
-
-        return runtimeXZSpriteMaterial;
+            renderer.sharedMaterial = null;
+        }
     }
 }

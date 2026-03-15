@@ -12,12 +12,28 @@ public class EnemyBrain : MonoBehaviour
 
     [SerializeField] private CharacterStats stats;
     [SerializeField] private CharacterStatResolver statResolver;
+    [SerializeField] private bool chasePlayer = true;
+    [SerializeField] private bool autoDisableChaseForRanged = true;
+
+    [Header("Shadow")]
+    [SerializeField] private float shadowGroundOffset = 0.03f;
+    [SerializeField] private float shadowAlpha = 0.62f;
+    [SerializeField] private float shadowDiameter = 0.62f;
+    [SerializeField] private float shadowTrackedHeight = 1.5f;
+    [SerializeField] private float shadowPlanarOffsetTowardsCamera = 0.14f;
+
+    [Header("2.5D Presentation")]
+    [SerializeField] private float visualFootOffset = 0.02f;
+    [SerializeField] private float visualLift = 0.08f;
 
     private Transform player;
     private NavMeshAgent agent;
     private EnemyCombat combat;
     private EnemyAnimatorDriver animatorDriver;
     private Transform attackOrigin;
+    private Vector3 meleeHitboxBaseLocalPosition;
+    private float meleeHitboxPlanarDistance;
+    private bool meleeHitboxCached;
     private bool statsSubscribed;
     private float currentAttackRange;
     private float nextNavMeshRebindTime;
@@ -32,7 +48,9 @@ public class EnemyBrain : MonoBehaviour
             statResolver = GetComponent<CharacterStatResolver>();
         worldSpaceSettings = RoomWorldSpaceSettings.Current;
 
-        Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Character);
+        Room2_5DPresentationUtility.EnsureDepthSorting(gameObject, Room2_5DRenderPreset.Prop);
+        EnsureXZVisualProxy();
+        EnsureShadowProjector();
 
         GameObject p = GameObject.FindGameObjectWithTag("Player");
         if (p != null)
@@ -44,6 +62,8 @@ public class EnemyBrain : MonoBehaviour
         if (worldSpaceSettings == null)
             worldSpaceSettings = RoomWorldSpaceSettings.Current;
 
+        EnsureXZVisualProxy();
+        EnsureShadowProjector();
         TrySubscribeToStats();
         RefreshStats();
     }
@@ -60,10 +80,12 @@ public class EnemyBrain : MonoBehaviour
         agent.updateUpAxis = usesXZPlane;
         // Dejamos que el "parar para atacar" lo controle AttackRange, no el stoppingDistance del agente.
         agent.stoppingDistance = 0f;
+        ConfigureRuntimeMovementAuthority(usesXZPlane);
 
         RefreshStats();
 
         transform.position = ClampToGameplayPlane(transform.position);
+        SnapAgentToTransform();
     }
 
     private void Update()
@@ -77,47 +99,51 @@ public class EnemyBrain : MonoBehaviour
 
         if (combat.IsAttacking)
         {
-            agent.isStopped = true;
+            StopAgentMovement();
             FaceTowardsPlayer();
             animatorDriver.SetMoveVelocity(Vector2.zero);
             return;
         }
         if (animatorDriver.IsHitLocked())
         {
-            agent.isStopped = true;
+            StopAgentMovement();
             animatorDriver.SetMoveVelocity(Vector2.zero);
             return;
         }
 
         if (player == null)
         {
-            agent.isStopped = true;
+            StopAgentMovement();
             animatorDriver.SetMoveVelocity(Vector2.zero);
             return;
         }
 
-        float distance = GetPlanarDistance(GetAttackOriginPosition(), player.position);
+        Vector2 toPlayerFromBody = ToPlanar(player.position - transform.position);
+        UpdateMeleeAttackOrigin(toPlayerFromBody);
+        float distance = GetPlanarDistance(transform.position, player.position);
 
         // =========================
         // CHASE
         // =========================
-        if (distance > currentAttackRange)
+        bool shouldChase = ShouldChasePlayer();
+        if (distance > currentAttackRange && shouldChase)
         {
             agent.isStopped = false;
             agent.SetDestination(player.position);
+            UpdateMeleeAttackOrigin(ToPlanar(agent.velocity));
+            animatorDriver.SetMoveVelocity(ToPlanar(agent.velocity));
         }
         else
         {
-            // =========================
-            // ATTACK
-            // =========================
-            agent.isStopped = true;
+            StopAgentMovement();
             FaceTowardsPlayer();
-            combat.TryAttack();
-        }
 
-        // Animación de movimiento
-        animatorDriver.SetMoveVelocity(ToPlanar(agent.velocity));
+            if (distance <= currentAttackRange)
+                combat.TryAttack();
+
+            animatorDriver.SetMoveVelocity(Vector2.zero);
+            return;
+        }
     }
 
     private Vector3 GetAttackOriginPosition()
@@ -133,6 +159,7 @@ public class EnemyBrain : MonoBehaviour
         {
             AttackHitbox meleeHitbox = GetComponentInChildren<AttackHitbox>(true);
             attackOrigin = meleeHitbox != null ? meleeHitbox.transform : transform;
+            CacheMeleeHitbox(attackOrigin);
         }
 
         return attackOrigin.position;
@@ -144,6 +171,7 @@ public class EnemyBrain : MonoBehaviour
             return;
 
         Vector2 toPlayer = ToPlanar(player.position - GetAttackOriginPosition());
+        UpdateMeleeAttackOrigin(toPlayer);
         animatorDriver.FaceDirection(toPlayer);
     }
 
@@ -246,4 +274,149 @@ public class EnemyBrain : MonoBehaviour
 
         return vector;
     }
+
+    private void EnsureShadowProjector()
+    {
+        BlobShadowProjector shadowProjector = GetComponent<BlobShadowProjector>();
+        if (shadowProjector == null)
+            shadowProjector = gameObject.AddComponent<BlobShadowProjector>();
+
+        shadowProjector.ConfigureRuntime(
+            shadowAlpha,
+            shadowDiameter,
+            shadowTrackedHeight,
+            shadowGroundOffset,
+            shadowPlanarOffsetTowardsCamera);
+    }
+
+    private void EnsureXZVisualProxy()
+    {
+        SpriteRenderer rootRenderer = GetComponent<SpriteRenderer>();
+        if (rootRenderer == null)
+            return;
+
+        bool use3DPresentation = worldSpaceSettings != null && worldSpaceSettings.UsesXZPlane;
+        XZSpriteVisualProxy proxy = GetComponent<XZSpriteVisualProxy>();
+        BillboardFacingCamera rootBillboard = GetComponent<BillboardFacingCamera>();
+        if (rootBillboard != null)
+            rootBillboard.enabled = false;
+
+        if (use3DPresentation)
+        {
+            if (proxy == null)
+                proxy = gameObject.AddComponent<XZSpriteVisualProxy>();
+
+            proxy.ConfigureRuntimeAnchoring(visualFootOffset, visualLift, true, false, true);
+            proxy.enabled = true;
+            proxy.Sync();
+            return;
+        }
+
+        if (proxy != null)
+            proxy.enabled = false;
+    }
+
+    private bool ShouldChasePlayer()
+    {
+        if (!chasePlayer)
+            return false;
+
+        if (autoDisableChaseForRanged && TryGetComponent(out EnemyAttackPublisher _))
+            return false;
+
+        if (agent != null && agent.speed <= 0.001f)
+            return false;
+
+        return true;
+    }
+
+    private void ConfigureRuntimeMovementAuthority(bool usesXZPlane)
+    {
+        if (!usesXZPlane)
+            return;
+
+        if (!TryGetComponent(out Rigidbody rigidbody3D))
+            return;
+
+        rigidbody3D.useGravity = false;
+        rigidbody3D.isKinematic = true;
+        rigidbody3D.linearVelocity = Vector3.zero;
+        rigidbody3D.angularVelocity = Vector3.zero;
+        rigidbody3D.constraints = RigidbodyConstraints.FreezeRotation;
+    }
+
+    private void StopAgentMovement()
+    {
+        if (agent == null)
+            return;
+
+        agent.isStopped = true;
+
+        if (agent.isOnNavMesh)
+            agent.ResetPath();
+
+        agent.velocity = Vector3.zero;
+        SnapAgentToTransform();
+    }
+
+    private void SnapAgentToTransform()
+    {
+        if (agent == null || !agent.enabled || !agent.isOnNavMesh)
+            return;
+
+        Vector3 clampedPosition = ClampToGameplayPlane(transform.position);
+        transform.position = clampedPosition;
+        agent.nextPosition = clampedPosition;
+    }
+
+    private void CacheMeleeHitbox(Transform hitboxTransform)
+    {
+        if (meleeHitboxCached || hitboxTransform == null || hitboxTransform == transform)
+            return;
+
+        meleeHitboxBaseLocalPosition = hitboxTransform.localPosition;
+        meleeHitboxPlanarDistance = Mathf.Max(
+            0.01f,
+            Mathf.Abs(meleeHitboxBaseLocalPosition.x),
+            Mathf.Abs(meleeHitboxBaseLocalPosition.z));
+        meleeHitboxCached = true;
+    }
+
+    private void UpdateMeleeAttackOrigin(Vector2 planarDirection)
+    {
+        if (worldSpaceSettings == null || !worldSpaceSettings.UsesXZPlane)
+            return;
+
+        if (animatorDriver != null && !animatorDriver.UsesFourDirectionalFacing)
+            return;
+
+        if (attackOrigin == null)
+            return;
+
+        if (!meleeHitboxCached)
+            CacheMeleeHitbox(attackOrigin);
+
+        if (!meleeHitboxCached || attackOrigin == transform)
+            return;
+
+        if (planarDirection.sqrMagnitude <= 0.0001f)
+            planarDirection = Vector2.down;
+
+        Vector2 facing = planarDirection.normalized;
+        Vector3 localPosition = meleeHitboxBaseLocalPosition;
+
+        if (Mathf.Abs(facing.x) >= Mathf.Abs(facing.y))
+        {
+            localPosition.x = Mathf.Sign(facing.x) * meleeHitboxPlanarDistance;
+            localPosition.z = 0f;
+        }
+        else
+        {
+            localPosition.x = 0f;
+            localPosition.z = Mathf.Sign(facing.y) * meleeHitboxPlanarDistance;
+        }
+
+        attackOrigin.localPosition = localPosition;
+    }
+
 }

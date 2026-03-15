@@ -45,6 +45,19 @@ public class RoomBuilder : MonoBehaviour
     [Header("Items")]
     [SerializeField] private GameObject worldItemPrefab;
 
+    [Header("Enemy Placement")]
+    [SerializeField] private float groundedEnemyBaseOffset = 0f;
+    [SerializeField] private float flyingEnemyBaseOffset = 0.5f;
+    [SerializeField] private float groundedEnemyHurtboxOffset = 0f;
+    [SerializeField] private float flyingEnemyHurtboxOffset = -0.25f;
+
+    [Header("Enemy Shadow")]
+    [SerializeField] private float enemyShadowGroundOffset = 0.03f;
+    [SerializeField] private float enemyShadowAlpha = 0.62f;
+    [SerializeField] private float enemyShadowDiameter = 0.62f;
+    [SerializeField] private float enemyShadowTrackedHeight = 1.5f;
+    [SerializeField] private float enemyShadowPlanarOffsetTowardsCamera = 0.14f;
+
     private IRoomGenerator _generator;
     private TilemapPainter _painter;
     private SpecialTileSpawner _spawner;
@@ -1292,11 +1305,20 @@ public class RoomBuilder : MonoBehaviour
                 spawnPosition,
                 Quaternion.identity,
                 parent);
-            ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Character);
+            CharacterCombat3DUtility.EnsureHurtbox(instance, ResolveEnemyHurtboxOffset(effectiveTags));
+            EnsureEnemyShadow(instance);
+            ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Prop);
 
             EnemyMovementAgentTypeMapper.Apply(instance, effectiveTags);
             if (instance.TryGetComponent(out NavMeshAgent agent))
+            {
+                agent.baseOffset = ResolveEnemyBaseOffset(effectiveTags);
                 TryRebindAgent(agent);
+            }
+            else
+            {
+                ApplyEnemyTransformOffset(instance.transform, effectiveTags);
+            }
 
             if (instance.TryGetComponent(out EnemyStatsApplier applier))
             {
@@ -1341,6 +1363,51 @@ public class RoomBuilder : MonoBehaviour
         bool isFlying = HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating");
         string agentTypeName = isFlying ? FlyingAgentTypeName : HumanoidAgentTypeName;
         return TryGetAgentTypeId(agentTypeName, out agentTypeId);
+    }
+
+    private float ResolveEnemyBaseOffset(IReadOnlyList<GameplayTag> tags)
+    {
+        return HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating")
+            ? flyingEnemyBaseOffset
+            : groundedEnemyBaseOffset;
+    }
+
+    private void ApplyEnemyTransformOffset(Transform enemyTransform, IReadOnlyList<GameplayTag> tags)
+    {
+        if (enemyTransform == null)
+            return;
+
+        float offset = ResolveEnemyBaseOffset(tags);
+        if (Mathf.Approximately(offset, 0f))
+            return;
+
+        Vector3 position = enemyTransform.position;
+        position.y += offset;
+        enemyTransform.position = position;
+    }
+
+    private float ResolveEnemyHurtboxOffset(IReadOnlyList<GameplayTag> tags)
+    {
+        return HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating")
+            ? flyingEnemyHurtboxOffset
+            : groundedEnemyHurtboxOffset;
+    }
+
+    private void EnsureEnemyShadow(GameObject instance)
+    {
+        if (instance == null)
+            return;
+
+        BlobShadowProjector shadowProjector = instance.GetComponent<BlobShadowProjector>();
+        if (shadowProjector == null)
+            shadowProjector = instance.AddComponent<BlobShadowProjector>();
+
+        shadowProjector.ConfigureRuntime(
+            enemyShadowAlpha,
+            enemyShadowDiameter,
+            enemyShadowTrackedHeight,
+            enemyShadowGroundOffset,
+            enemyShadowPlanarOffsetTowardsCamera);
     }
 
     private static IReadOnlyList<GameplayTag> ResolveEnemyEffectiveTags(EnemySpawnData enemyData)

@@ -36,7 +36,7 @@ Transform:
   m_GameObject: {fileID: 5914333046785950872}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.577, y: 0.518, z: 0}
+  m_LocalPosition: {x: 0, y: 0.46, z: 0}
   m_LocalScale: {x: 1.9522209, y: 1.960366, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -284,6 +284,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyBrain
   stats: {fileID: 11400000, guid: 999d8206e73ba5c4e858586e1a58fe49, type: 2}
   statResolver: {fileID: 1189301972832783404}
+  shadowGroundOffset: 0.03
+  shadowAlpha: 0.62
+  shadowDiameter: 0.62
+  shadowTrackedHeight: 1.5
+  shadowPlanarOffsetTowardsCamera: 0.14
+  visualFootOffset: 0.02
+  visualLift: 0.08
 --- !u!114 &4340855648266125395
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -334,8 +341,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1436399397430047634}
-  - component: {fileID: 7736195002620755620}
   - component: {fileID: 1131984286518920305}
+  - component: {fileID: 6106450872265777143}
   m_Layer: 9
   m_Name: AttackHitbox
   m_TagString: Untagged
@@ -358,52 +365,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 5036341232689599259}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!61 &7736195002620755620
-BoxCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7806716196069953746}
-  m_Enabled: 0
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 1
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: -0.23288202, y: 0.10125309}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0, y: 0}
-    oldSize: {x: 0, y: 0}
-    newSize: {x: 0, y: 0}
-    adaptiveTilingThreshold: 0
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
-  m_EdgeRadius: 0
 --- !u!114 &1131984286518920305
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -420,3 +381,26 @@ MonoBehaviour:
   targetLayer:
     serializedVersion: 2
     m_Bits: 8
+  hitbox2D: {fileID: 0}
+  hitbox3D: {fileID: 6106450872265777143}
+--- !u!65 &6106450872265777143
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7806716196069953746}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}

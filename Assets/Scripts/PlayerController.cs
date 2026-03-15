@@ -51,6 +51,13 @@ public class PlayerController : MonoBehaviour
     [Header("Flying Collision Rules")]
     [SerializeField] private float flyingCollisionRefreshInterval = 0.25f;
 
+    [Header("Shadow")]
+    [SerializeField] private float shadowGroundOffset = 0.06f;
+    [SerializeField] private float shadowAlpha = 0.5f;
+    [SerializeField] private float shadowDiameter = 0.68f;
+    [SerializeField] private float shadowTrackedHeight = 1.5f;
+    [SerializeField] private float shadowPlanarOffsetTowardsCamera = 0.04f;
+
     [Header("Events")]
     [SerializeField] private PlayerAudioMovingEvent playerAudioMovingEvent;
     [SerializeField] private PlayerAudioStopEvent playerAudioStopEvent;
@@ -967,6 +974,17 @@ public class PlayerController : MonoBehaviour
 
         if (GetComponent<PlayerInventoryInput>() == null)
             gameObject.AddComponent<PlayerInventoryInput>();
+
+        BlobShadowProjector shadowProjector = GetComponent<BlobShadowProjector>();
+        if (shadowProjector == null)
+            shadowProjector = gameObject.AddComponent<BlobShadowProjector>();
+
+        shadowProjector.ConfigureRuntime(
+            shadowAlpha,
+            shadowDiameter,
+            shadowTrackedHeight,
+            shadowGroundOffset,
+            shadowPlanarOffsetTowardsCamera);
     }
 
     private void RegisterAsCurrentPlayerTransform()
