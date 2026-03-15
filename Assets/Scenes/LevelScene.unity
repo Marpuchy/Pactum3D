@@ -172,6 +172,8 @@ MonoBehaviour:
   layeredTilemaps: {fileID: 1662943754}
   worldSpaceSettings: {fileID: 12348683}
   room3DGeometryBuilder: {fileID: 12348684}
+  roomWallStructureBuilder: {fileID: 0}
+  roomDoorStructureBuilder: {fileID: 0}
   doorPrefab: {fileID: 5722507828685100508, guid: cae5dafdd819a5ec78f69f2f66744be6, type: 3}
   onRoomSpawnEvent: {fileID: 11400000, guid: d816ebaf6a64a3c5ab30aff26d0ec2a3, type: 2}
   enemyDeathEvent: {fileID: 11400000, guid: 9f720ade1b9a2dd0bb818ede26bf9586, type: 2}
@@ -180,7 +182,6 @@ MonoBehaviour:
   navMeshSurfaces: []
   roomSequenceConfig: {fileID: 11400000, guid: 64b9dcbf42eb4504eaf0ecfa7409269a, type: 2}
   usePrototypeRoom: 0
-  spawnEnemies: 0
   prototypeWalkableSize: {x: 6, y: 6}
   prototypeWallThickness: 1
   doorClip: {fileID: 8300000, guid: 5f43aedc5bfb3b4a1b049a81a91557f3, type: 3}
@@ -260,6 +261,7 @@ MonoBehaviour:
   buildOnlyForXZProjection: 1
   buildVisibleFloor: 0
   buildVisibleWalls: 0
+  buildWallStructuresInXZ: 0
   generateColliders: 1
   floorThickness: 0.2
   visibleFloorSink: 0.08
@@ -842,7 +844,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 104.9
+  field of view: 140
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -937,9 +939,9 @@ MonoBehaviour:
   useSceneOffsetWhenFollowOffsetUnset: 0
   applyXZDiagonalView: 1
   forcePerspectiveForXZ: 0
-  xzDiagonalEulerAngles: {x: 20, y: 0, z: 0}
+  xzDiagonalEulerAngles: {x: 25, y: 0, z: 0}
   defaultXZFollowOffset: {x: 0, y: 0, z: -10}
-  defaultXZCameraHeight: 4
+  defaultXZCameraHeight: 5
   clampPerspectiveXZToBounds: 0
   boundsTilemap: {fileID: 1257296041}
   layeredTilemaps: {fileID: 1662943754}

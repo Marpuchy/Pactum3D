@@ -37,7 +37,6 @@ public class RoomBuilder : MonoBehaviour
 
     [Header("Runtime Generation")]
     [SerializeField] private bool usePrototypeRoom = false;
-    [SerializeField] private bool spawnEnemies = false;
     [SerializeField] private Vector2Int prototypeWalkableSize = new Vector2Int(6, 6);
     [SerializeField, Min(1)] private int prototypeWallThickness = 1;
 
@@ -356,10 +355,7 @@ public class RoomBuilder : MonoBehaviour
             if (enemiesRoot == null)
                 enemiesRoot = GetOrCreateChildContainer(parent, "Enemies");
 
-            if (spawnEnemies)
-                SpawnEnemies(room, enemiesRoot);
-            else
-                enemyCount = 0;
+            SpawnEnemies(room, enemiesRoot);
 
             RebindAllAgentsToCurrentNavMesh();
         }
