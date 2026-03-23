@@ -12,5 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e959d84e5a3b4d3e080bfc047f8b837a, type: 3}
   m_Name: ElfBootsStats
   m_EditorClassIdentifier: Assembly-CSharp::ArmorStatsSO
-  defense: 2
-  healthBonus: 2
+  modifiers:
+  - statType: 0
+    operation: 0
+    value: 4
+    priorityOffset: 0
+  - statType: 9
+    operation: 1
+    value: 1.1
+    priorityOffset: 0
+  legacyModifiersMigrated: 1

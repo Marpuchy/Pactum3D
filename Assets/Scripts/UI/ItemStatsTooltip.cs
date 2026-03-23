@@ -232,7 +232,7 @@ public sealed class ItemStatsTooltip : MonoBehaviour
 
             string label = HumanizeStatType(modifier.StatType);
             string value = modifier.Operation == StatModifierOperation.Multiply
-                ? $"x{modifier.Value:0.##}"
+                ? FormatPercentModifier(modifier.Value)
                 : modifier.Value >= 0f
                     ? $"+{modifier.Value:0.##}"
                     : modifier.Value.ToString("0.##");
@@ -297,6 +297,14 @@ public sealed class ItemStatsTooltip : MonoBehaviour
             default:
                 return PactDescriptionFormatter.HumanizeEnum(statType);
         }
+    }
+
+    private static string FormatPercentModifier(float factor)
+    {
+        float percent = (factor - 1f) * 100f;
+        return percent >= 0f
+            ? $"+{percent:0.#}%"
+            : $"{percent:0.#}%";
     }
 
     public static ItemStatsTooltip Ensure(ItemStatsTooltip existing, Canvas targetCanvas)

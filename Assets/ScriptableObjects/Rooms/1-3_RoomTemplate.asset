@@ -20,10 +20,10 @@ MonoBehaviour:
   itemsToSpawn: 2
   itemRarities:
   - rarity: {fileID: 11400000, guid: 7fa1abbf4b276834cadad3c8b60443a0, type: 2}
-    spawnWeight: 0.72299993
+    spawnWeight: 0.82
     tags: []
   - rarity: {fileID: 11400000, guid: 72cd6a5dd635cc0429acff5dc5d3d887, type: 2}
-    spawnWeight: 0.277
+    spawnWeight: 0.18
     tags: []
   coinsToSpawn: 2
   coinItemData: {fileID: 11400000, guid: 7653b0a541e82669ba255ed75111e49e, type: 2}

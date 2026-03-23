@@ -12,5 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e959d84e5a3b4d3e080bfc047f8b837a, type: 3}
   m_Name: AngryMaskStats
   m_EditorClassIdentifier: Assembly-CSharp::ArmorStatsSO
-  defense: 7
-  healthBonus: 7
+  modifiers:
+  - statType: 0
+    operation: 0
+    value: 6
+    priorityOffset: 0
+  - statType: 2
+    operation: 1
+    value: 1.08
+    priorityOffset: 0
+  legacyModifiersMigrated: 1

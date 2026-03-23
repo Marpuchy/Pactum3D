@@ -17,7 +17,7 @@ MonoBehaviour:
   icon: {fileID: 2376964494008296374, guid: 497d49f7e20f9b5d4a4a74154581d558, type: 3}
   description: Golden Auuuuuuuuuuuuuuuuu
   itemType: 0
-  weaponStats: {fileID: 11400000, guid: 8214a76ad5d7fcfa0b526b716c9152c8, type: 2}
+  weaponStats: {fileID: 11400000, guid: 1dd4bff80fde29e229e96c16dacad6ba, type: 2}
   armorStats: {fileID: 0}
   consumableStats: {fileID: 0}
   rarity: {fileID: 11400000, guid: bfb975caecd02944dac02ff8fdcea37e, type: 2}

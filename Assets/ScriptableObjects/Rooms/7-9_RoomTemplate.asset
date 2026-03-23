@@ -20,16 +20,16 @@ MonoBehaviour:
   itemsToSpawn: 2
   itemRarities:
   - rarity: {fileID: 11400000, guid: 7fa1abbf4b276834cadad3c8b60443a0, type: 2}
-    spawnWeight: 0.225
+    spawnWeight: 0.14
     tags: []
   - rarity: {fileID: 11400000, guid: 72cd6a5dd635cc0429acff5dc5d3d887, type: 2}
-    spawnWeight: 0.22625208
+    spawnWeight: 0.47
     tags: []
   - rarity: {fileID: 11400000, guid: f120d7696db853949b6f979f05e9afc6, type: 2}
-    spawnWeight: 0.47785062
+    spawnWeight: 0.34
     tags: []
   - rarity: {fileID: 11400000, guid: bfb975caecd02944dac02ff8fdcea37e, type: 2}
-    spawnWeight: 0.070897266
+    spawnWeight: 0.04
     tags: []
   coinsToSpawn: 0
   coinItemData: {fileID: 0}
@@ -40,22 +40,22 @@ MonoBehaviour:
   chestPrefab: {fileID: 8439460027181728471, guid: 06b845f278f1591b1975951d6f8361c1, type: 3}
   chestRarities:
   - rarity: {fileID: 11400000, guid: 7fa1abbf4b276834cadad3c8b60443a0, type: 2}
-    spawnWeight: 0.12330959
+    spawnWeight: 0.18
     prefab: {fileID: 8439460027181728471, guid: 06b845f278f1591b1975951d6f8361c1, type: 3}
     lootTable: {fileID: 11400000, guid: 3b1a6be960774f7198ee7503da1747f2, type: 2}
     tags: []
   - rarity: {fileID: 11400000, guid: 72cd6a5dd635cc0429acff5dc5d3d887, type: 2}
-    spawnWeight: 0.3838397
+    spawnWeight: 0.44
     prefab: {fileID: 8439460027181728471, guid: 2066c75f2e988af4282794f84e3b5524, type: 3}
     lootTable: {fileID: 11400000, guid: 9184fb8dfd0cd1d44896c61f59aaa58c, type: 2}
     tags: []
   - rarity: {fileID: 11400000, guid: f120d7696db853949b6f979f05e9afc6, type: 2}
-    spawnWeight: 0.43985075
+    spawnWeight: 0.35
     prefab: {fileID: 8439460027181728471, guid: aed65c482ca546e4c864b1e7d924b380, type: 3}
     lootTable: {fileID: 11400000, guid: 6d93355a7935c2d4eb290b96a2db2e57, type: 2}
     tags: []
   - rarity: {fileID: 11400000, guid: bfb975caecd02944dac02ff8fdcea37e, type: 2}
-    spawnWeight: 0.053
+    spawnWeight: 0.025
     prefab: {fileID: 8439460027181728471, guid: e769bcd6c6623854398de4767052c55e, type: 3}
     lootTable: {fileID: 11400000, guid: 777adcd625f1ee74ab89279cb7d0b607, type: 2}
     tags: []

@@ -12,5 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e959d84e5a3b4d3e080bfc047f8b837a, type: 3}
   m_Name: SurprisedMaskStats
   m_EditorClassIdentifier: Assembly-CSharp::ArmorStatsSO
-  defense: 4
-  healthBonus: 4
+  modifiers:
+  - statType: 1
+    operation: 0
+    value: 0.75
+    priorityOffset: 0
+  - statType: 0
+    operation: 0
+    value: 7
+    priorityOffset: 0
+  legacyModifiersMigrated: 1

@@ -13,18 +13,18 @@ MonoBehaviour:
   m_Name: PlayerStatsRanged
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStats
   saveId: player_ranged
-  maxHealth: 100
-  shieldArmor: 1
-  attackDamage: 9
-  attackSpeed: 2
-  attackLocktime: 0.35
+  maxHealth: 95
+  shieldArmor: 0
+  attackDamage: 8
+  attackSpeed: 1.35
+  attackLocktime: 0.28
   attackRange: 7.5
   detectionRange: 11
   hitReactThreshold: 0
   dashSpeed: 14
   dashDuration: 0.12
   dashCooldown: 0.6
-  maxSpeed: 7
+  maxSpeed: 6.85
   acceleration: 60
   deceleration: 70
   turnAcceleration: 90

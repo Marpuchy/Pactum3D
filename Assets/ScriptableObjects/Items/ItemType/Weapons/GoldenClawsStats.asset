@@ -12,5 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b986776bca7511a7fba03598ab06253b, type: 3}
   m_Name: GoldenClawsStats
   m_EditorClassIdentifier: Assembly-CSharp::WeaponStatsSO
-  damage: -10
-  attackSpeed: 10
+  modifiers:
+  - statType: 2
+    operation: 0
+    value: -3
+    priorityOffset: 0
+  - statType: 3
+    operation: 1
+    value: 1.55
+    priorityOffset: 0
+  - statType: 9
+    operation: 1
+    value: 1.12
+    priorityOffset: 0
+  legacyModifiersMigrated: 1

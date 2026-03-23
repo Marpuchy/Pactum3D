@@ -12,5 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b986776bca7511a7fba03598ab06253b, type: 3}
   m_Name: BaseClawsStats
   m_EditorClassIdentifier: Assembly-CSharp::WeaponStatsSO
-  damage: -10
-  attackSpeed: 7
+  modifiers:
+  - statType: 2
+    operation: 0
+    value: -6
+    priorityOffset: 0
+  - statType: 3
+    operation: 1
+    value: 1.4
+    priorityOffset: 0
+  legacyModifiersMigrated: 1

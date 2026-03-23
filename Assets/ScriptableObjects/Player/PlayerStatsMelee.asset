@@ -13,18 +13,18 @@ MonoBehaviour:
   m_Name: PlayerStatsMelee
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStats
   saveId: player_melee
-  maxHealth: 120
-  shieldArmor: 1
-  attackDamage: 14
+  maxHealth: 115
+  shieldArmor: 0
+  attackDamage: 12
   attackSpeed: 1
-  attackLocktime: 0.5
+  attackLocktime: 0.4
   attackRange: 1.6
   detectionRange: 10
   hitReactThreshold: 0
   dashSpeed: 14
   dashDuration: 0.12
   dashCooldown: 0.6
-  maxSpeed: 7
+  maxSpeed: 6.75
   acceleration: 60
   deceleration: 70
   turnAcceleration: 90

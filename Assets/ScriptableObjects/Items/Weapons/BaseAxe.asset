@@ -17,7 +17,7 @@ MonoBehaviour:
   icon: {fileID: 1387889190303113742, guid: 4244ce3b841ba01a7abb84c08033172e, type: 3}
   description: Base Axe
   itemType: 0
-  weaponStats: {fileID: 11400000, guid: 7da40219c356b81c3afe434fff9a4d5e, type: 2}
+  weaponStats: {fileID: 11400000, guid: 6d0761cc78c89902db2765c3bf388062, type: 2}
   armorStats: {fileID: 0}
   consumableStats: {fileID: 0}
   rarity: {fileID: 11400000, guid: 7fa1abbf4b276834cadad3c8b60443a0, type: 2}
