@@ -44,6 +44,9 @@ public class RoomBuilder : MonoBehaviour
     [Header("Items")]
     [SerializeField] private GameObject worldItemPrefab;
 
+    [Header("NPC Placement")]
+    [SerializeField] private float npcSpawnHeightOffset = 0.5f;
+
     [Header("Enemy Placement")]
     [SerializeField] private float groundedEnemyBaseOffset = 0f;
     [SerializeField] private float flyingEnemyBaseOffset = 0.5f;
@@ -1511,7 +1514,7 @@ public class RoomBuilder : MonoBehaviour
             if (!_tileOccupancy.TryOccupy(npcData.Position))
                 continue;
 
-            Vector3 worldPos = CreateCellPosition(npcData.Position);
+            Vector3 worldPos = CreateCellPosition(npcData.Position, orthogonalOffset: npcSpawnHeightOffset);
 
             GameObject instance = Instantiate(
                 npcData.Prefab,
