@@ -11,10 +11,12 @@ public sealed class WorldPromptPresenter : MonoBehaviour
 
     [Header("Positioning")]
     [SerializeField] private Vector3 worldOffset = new(0f, 0.35f, 0f);
+    [SerializeField] private int canvasSortingOrder = 5000;
 
     private Transform _followTarget;
     private GameObject _instance;
     private TMP_Text _label;
+    private Canvas _canvas;
 
     private void Awake()
     {
@@ -73,6 +75,9 @@ public sealed class WorldPromptPresenter : MonoBehaviour
 
         _instance = Instantiate(promptPrefab);
         _label = _instance.GetComponentInChildren<TMP_Text>(true);
+        _canvas = _instance.GetComponentInChildren<Canvas>(true);
+
+        ConfigurePromptCanvas();
 
         if (_label == null)
             Debug.LogError($"{nameof(WorldPromptPresenter)}: Prefab must contain a TMP_Text.");
@@ -82,5 +87,14 @@ public sealed class WorldPromptPresenter : MonoBehaviour
     {
         if (_instance != null && _instance.activeSelf != visible)
             _instance.SetActive(visible);
+    }
+
+    private void ConfigurePromptCanvas()
+    {
+        if (_canvas == null)
+            return;
+
+        _canvas.overrideSorting = true;
+        _canvas.sortingOrder = canvasSortingOrder;
     }
 }

@@ -2022,6 +2022,38 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_Color.b
+      value: 0.43921322
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_Color.g
+      value: 0.67245877
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_Color.r
+      value: 0.8867924
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_Intensity
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_ShadowsEnabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_LightVolumeEnabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_LightVolumeIntensity
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 7557573144605161912, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
+      propertyPath: m_PointLightOuterRadius
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 8312716341548270105, guid: b31a6dea63c1c1633a23b8f4f3287b2d, type: 3}
       propertyPath: m_Name
       value: Player

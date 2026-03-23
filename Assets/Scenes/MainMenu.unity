@@ -376,7 +376,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuSaveUIController
   context: 0
   slotName: slot_0
-  defaultGameplayScene: NavmeshSalas
+  defaultGameplayScene: LevelScene
   mainMenuSceneName: MainMenu
   meleeToggle: {fileID: 1749473472}
   rangedToggle: {fileID: 1315020879}

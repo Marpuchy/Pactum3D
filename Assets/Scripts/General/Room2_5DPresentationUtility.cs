@@ -89,21 +89,32 @@ public static class Room2_5DPresentationUtility
         if (instance == null || worldSpace == null || !worldSpace.UsesXZPlane)
             return;
 
-        BillboardFacingCamera billboard = instance.GetComponent<BillboardFacingCamera>();
+        BillboardFacingCamera[] billboards = instance.GetComponentsInChildren<BillboardFacingCamera>(true);
         bool shouldBillboard = preset == Room2_5DRenderPreset.Character;
 
         if (!shouldBillboard)
         {
-            if (billboard != null)
-                billboard.enabled = false;
+            for (int i = 0; i < billboards.Length; i++)
+            {
+                if (billboards[i] != null)
+                    billboards[i].enabled = false;
+            }
 
             return;
         }
 
+        BillboardFacingCamera billboard = instance.GetComponent<BillboardFacingCamera>();
         if (billboard == null)
             billboard = instance.AddComponent<BillboardFacingCamera>();
 
         billboard.enabled = true;
+
+        for (int i = 0; i < billboards.Length; i++)
+        {
+            BillboardFacingCamera childBillboard = billboards[i];
+            if (childBillboard != null && childBillboard != billboard)
+                childBillboard.enabled = false;
+        }
     }
 
     private static void EnsureXZSpriteRendering(GameObject instance)

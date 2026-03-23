@@ -51,7 +51,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
+  m_Size: {x: 1, y: 1, z: 2}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &8312716341548270105
 GameObject:
@@ -193,6 +193,11 @@ MonoBehaviour:
   statResolver: {fileID: 2395881852417106300}
   playerAudios: {fileID: 11400000, guid: 435500123a19cfd43bad52b7fb086f09, type: 2}
   flyingCollisionRefreshInterval: 0.25
+  shadowGroundOffset: 0.06
+  shadowAlpha: 0.5
+  shadowDiameter: 0.68
+  shadowTrackedHeight: 1.5
+  shadowPlanarOffsetTowardsCamera: 0.04
   playerAudioMovingEvent: {fileID: 11400000, guid: 3f200025526a5744791400cbee6e73ac, type: 2}
   playerAudioStopEvent: {fileID: 11400000, guid: fe779ecfc71150a4eb441e867599e545, type: 2}
   playerAudioAttackingEvent: {fileID: 11400000, guid: d846e675c54f4833897cfcbe9fcf08bf, type: 2}

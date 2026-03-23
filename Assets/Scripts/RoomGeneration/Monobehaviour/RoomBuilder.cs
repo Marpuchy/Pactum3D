@@ -1520,7 +1520,7 @@ public class RoomBuilder : MonoBehaviour
                 parent);
 
             ApplyNpcDefinition(instance, npcData.Definition);
-            ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Character);
+            ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Prop);
         }
     }
 

@@ -25,4 +25,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7969d88a449c4d79a500e9dc390a7773, type: 2}
   requiredPreviousPact: {fileID: 11400000, guid: 915644829d88f7789bbfdc87f226a4e3, type: 2}
   effects:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 3c65e26dc613240a2bc8beeb46204755, type: 2}
+  - {fileID: 11400000, guid: c2a277d9fc6e00eeaa482ac25aceaa69, type: 2}

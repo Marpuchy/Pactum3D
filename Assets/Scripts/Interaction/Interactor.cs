@@ -30,6 +30,8 @@ public sealed class Interactor : MonoBehaviour
     private readonly HashSet<IInteractable> _candidates = new();
     private IInteractable _current;
     private RoomWorldSpaceSettings worldSpaceSettings;
+    private Collider interactionRangeCollider3D;
+    private Collider2D interactionRangeCollider2D;
 
     /// <summary>
     /// Current interactable selected by the interactor or null if none.
@@ -113,6 +115,7 @@ public sealed class Interactor : MonoBehaviour
             miniInventory = GetComponent<PlayerMiniInventory>();
 
         worldSpaceSettings = ResolveWorldSpaceSettings();
+        CacheInteractionRangeColliders();
     }
 
     private static bool TryGetItemData(IItem item, out ItemDataSO data)
@@ -260,8 +263,11 @@ public sealed class Interactor : MonoBehaviour
             if (interactionPoint == null || !interactable.CanInteract(this))
                 continue;
 
+            if (!IsWithinXZInteractionRange(interactionPoint.position))
+                continue;
+
             float planarDistance = ResolvePlanarDistance(transform.position, interactionPoint.position);
-            if (planarDistance > maxDistance)
+            if (interactionRangeCollider3D == null && planarDistance > maxDistance)
                 continue;
 
             if (interactable.Mode == InteractionMode.Automatic)
@@ -297,10 +303,35 @@ public sealed class Interactor : MonoBehaviour
         return worldSpaceSettings;
     }
 
+    private void CacheInteractionRangeColliders()
+    {
+        Transform interactionRange = transform.Find("InteractionRange");
+        if (interactionRange != null)
+        {
+            interactionRangeCollider3D = interactionRange.GetComponent<Collider>();
+            interactionRangeCollider2D = interactionRange.GetComponent<Collider2D>();
+        }
+
+        if (interactionRangeCollider3D == null)
+            interactionRangeCollider3D = GetComponent<Collider>();
+
+        if (interactionRangeCollider2D == null)
+            interactionRangeCollider2D = GetComponent<Collider2D>();
+    }
+
     private bool UsesXZInteractionQuery()
     {
         RoomWorldSpaceSettings settings = ResolveWorldSpaceSettings();
         return settings != null && settings.UsesXZPlane;
+    }
+
+    private bool IsWithinXZInteractionRange(Vector3 worldPosition)
+    {
+        if (interactionRangeCollider3D == null)
+            return ResolvePlanarDistance(transform.position, worldPosition) <= maxDistance;
+
+        Vector3 closestPoint = interactionRangeCollider3D.ClosestPoint(worldPosition);
+        return (closestPoint - worldPosition).sqrMagnitude <= 0.0001f;
     }
 
     private float ResolvePlanarDistance(Vector3 from, Vector3 to)
