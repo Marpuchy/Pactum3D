@@ -67,6 +67,21 @@ public class EnemyAnimatorDriver : MonoBehaviour
     public bool UsesFourDirectionalFacing => locomotionMode == LocomotionMode.FourDirections;
     public bool UsesHorizontalFlipFacing => locomotionMode == LocomotionMode.FlipX;
 
+    public Vector2 ResolveFacingDirection(Vector2 direction)
+    {
+        switch (locomotionMode)
+        {
+            case LocomotionMode.FourDirections:
+                return snapToFourDirections ? ResolveStableCardinal(direction) : direction.normalized;
+
+            default:
+                if (Mathf.Abs(direction.x) <= horizontalFacingDeadZone)
+                    return new Vector2(facingRight ? 1f : -1f, 0f);
+
+                return new Vector2(Mathf.Sign(direction.x), 0f);
+        }
+    }
+
     // =============================
     // LIFECYCLE
     // =============================
@@ -190,7 +205,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
         switch (locomotionMode)
         {
             case LocomotionMode.FourDirections:
-                Vector2 facing = snapToFourDirections ? ResolveStableCardinal(direction) : direction.normalized;
+                Vector2 facing = ResolveFacingDirection(direction);
                 if (facing == Vector2.zero)
                     return;
 
@@ -225,7 +240,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
         Vector2 facing;
         if (isMoving)
         {
-            facing = snapToFourDirections ? ResolveStableCardinal(velocity) : velocity.normalized;
+            facing = ResolveFacingDirection(velocity);
             if (facing != Vector2.zero)
                 lastFacing = facing;
         }

@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea4b6dc6e1814fd7a0d9214296b83817, type: 3}
+  m_Name: DefaultBiomeRoomTileset
+  m_EditorClassIdentifier: Assembly-CSharp::RoomTilesetSO
+  wallTile: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
+  floorTile: {fileID: 11400000, guid: b7c9d02a702c96d49aba16428b6f98b7, type: 2}
+  spawnPointTile: {fileID: 11400000, guid: 0281f1cb84735ba4d8167faf976d0926, type: 2}
+  door:
+    closed: {fileID: 0}
+    open: {fileID: 0}
+  doorPrefab: {fileID: 5722507828685100508, guid: cae5dafdd819a5ec78f69f2f66744be6, type: 3}
+  specialTiles:
+  - type: 5
+    specialTileTile: {fileID: 0}
+    specialTilePrefab: {fileID: 7673116591428782428, guid: 9c7abcb056432c44b83a67c0c5c1f9e1, type: 3}
+    tags:
+    - {fileID: 11400000, guid: 0dd4bca669dc4a1097157f1c468a4955, type: 2}
+  - type: 7
+    specialTileTile: {fileID: 0}
+    specialTilePrefab: {fileID: 4905680764639183262, guid: 170115d932873d85b9f12c15aac14559, type: 3}
+    tags:
+    - {fileID: 11400000, guid: 69d2229fa9f849cdadd4ddda0751f7d8, type: 2}
+  - type: 4
+    specialTileTile: {fileID: 0}
+    specialTilePrefab: {fileID: 5304563030024963202, guid: b6613c80bb17cad47af9fb6f87c9bdb0, type: 3}
+    tags:
+    - {fileID: 11400000, guid: 75124dab46544a098d7e4f70a9d2d6af, type: 2}
+  tags:
+  - {fileID: 11400000, guid: 06ad37654c2c463882b657ad493ddb24, type: 2}
+  - {fileID: 11400000, guid: dd43cd80751be0941be59ac9cca07df7, type: 2}

@@ -27,7 +27,6 @@ public class RoomBuilder : MonoBehaviour
     [SerializeField] private Room3DGeometryBuilder room3DGeometryBuilder;
     [SerializeField] private RoomWallStructureBuilder roomWallStructureBuilder;
     [SerializeField] private RoomDoorStructureBuilder roomDoorStructureBuilder;
-    [SerializeField] private GameObject doorPrefab;
     [SerializeField] private RoomSpawnEvent onRoomSpawnEvent;
     [SerializeField] private EnemyDeathEvent enemyDeathEvent;
     [SerializeField] private RoomClearedEvent roomClearedEvent;
@@ -161,14 +160,18 @@ public class RoomBuilder : MonoBehaviour
             return;
         }
 
+        RoomTilesetSO tileset = ResolveTileset(template);
+        if (tileset == null)
+            return;
+
         isCurrentNpcRoom = roomSequenceConfig != null &&
                            roomSequenceConfig.npcRoomTemplate != null &&
                            template == roomSequenceConfig.npcRoomTemplate;
         currentRoomSeed = BuildRoomSeed(runSeed, CurrentRoomNumber);
         
         _tileOccupancy = new TileOccupancy();
-        _painter = new TilemapPainter(ResolveCollisionTilemap(), template, layeredTilemaps, doorPrefab);
-        _spawner = new SpecialTileSpawner(template, parent, worldSpaceSettings);
+        _painter = new TilemapPainter(ResolveCollisionTilemap(), tileset, layeredTilemaps);
+        _spawner = new SpecialTileSpawner(tileset, parent, worldSpaceSettings);
 
         StartCoroutine(BuildAndBakeRoutine(parent, template, currentRoomSeed));
     }
@@ -195,6 +198,10 @@ public class RoomBuilder : MonoBehaviour
             yield break;
         }
 
+        RoomTilesetSO tileset = ResolveTileset(template);
+        if (tileset == null)
+            yield break;
+
         Random.State previousRandomState = Random.state;
         Random.InitState(SanitizeSeed(roomSeed));
         Room room = _generator.Generate(template);
@@ -203,15 +210,15 @@ public class RoomBuilder : MonoBehaviour
         ConfigurePrototypeWorldOrigin(room);
         currentRoom = room;
         currentRoomWorldBounds = CalculateRoomWorldBounds(room);
-        _painter = new TilemapPainter(ResolveCollisionTilemap(), template, layeredTilemaps, doorPrefab);
+        _painter = new TilemapPainter(ResolveCollisionTilemap(), tileset, layeredTilemaps);
 
         ClearLegacyTilemaps();
         AlignTilemapGridToWorldSpace();
         ClearPrototypeRuntimeContainers(parent);
         room3DGeometryBuilder?.Rebuild(room, parent);
         _painter.Paint(room);
-        BuildWallStructures(room, parent, template);
-        BuildDoorStructures(room, GetOrCreateChildContainer(parent, "Doors"), template);
+        BuildWallStructures(room, parent, tileset);
+        RebuildDoorStructures(room, parent, tileset);
 
         NavMeshSurface prototypeSurface = EnsurePrototypeNavMeshSurface(parent);
         DisableLegacyNavMeshSurfacesForPrototype(parent);
@@ -251,6 +258,10 @@ public class RoomBuilder : MonoBehaviour
 
     private IEnumerator BuildAndBakeRoutine(Transform parent, RoomTemplate template, int roomSeed)
     {
+        RoomTilesetSO tileset = ResolveTileset(template);
+        if (tileset == null)
+            yield break;
+
         Room room = null;
         bool buildFailed = false;
         Transform enemiesRoot = null;
@@ -267,10 +278,9 @@ public class RoomBuilder : MonoBehaviour
             ClearLegacyTilemaps();
             room3DGeometryBuilder?.Rebuild(room, parent);
             _painter.Paint(room);
-            BuildWallStructures(room, parent, template);
+            BuildWallStructures(room, parent, tileset);
             _spawner.Spawn(room);
 
-            Transform doorsRoot = GetOrCreateChildContainer(parent, "Doors");
             Transform itemsRoot = GetOrCreateChildContainer(parent, "Items");
             enemiesRoot = GetOrCreateChildContainer(parent, "Enemies");
             Transform chestsRoot = GetOrCreateChildContainer(parent, "Chests");
@@ -283,12 +293,11 @@ public class RoomBuilder : MonoBehaviour
 
             context.Initialize(itemsRoot);
 
-            ClearContainerChildren(doorsRoot);
             ClearContainerChildren(itemsRoot);
             ClearContainerChildren(enemiesRoot);
             ClearContainerChildren(chestsRoot);
             ClearContainerChildren(npcsRoot);
-            BuildDoorStructures(room, doorsRoot, template);
+            RebuildDoorStructures(room, parent, tileset);
             SpawnChests(room, chestsRoot);
             SpawnNpcs(room, npcsRoot);
             SpawnItemsInRoom(room, itemsRoot, template);
@@ -1073,12 +1082,24 @@ public class RoomBuilder : MonoBehaviour
         return new Vector3(tilePos.x + offsetX, tilePos.y + offsetY, orthogonalOffset);
     }
 
-    private void BuildWallStructures(Room room, Transform parent, RoomTemplate template)
+    private RoomTilesetSO ResolveTileset(RoomTemplate template)
+    {
+        if (template == null)
+            return null;
+
+        if (template.Tileset != null)
+            return template.Tileset;
+
+        Debug.LogError($"RoomBuilder: template '{template.name}' has no RoomTilesetSO assigned.", template);
+        return null;
+    }
+
+    private void BuildWallStructures(Room room, Transform parent, RoomTilesetSO tileset)
     {
         if (roomWallStructureBuilder == null)
             return;
 
-        roomWallStructureBuilder.Rebuild(room, parent, template);
+        roomWallStructureBuilder.Rebuild(room, parent, tileset);
     }
 
     private void ConfigureSpawnedInstance(GameObject instance, Room2_5DRenderPreset preset)
@@ -1193,12 +1214,12 @@ public class RoomBuilder : MonoBehaviour
         }
     }
 
-    private void BuildDoorStructures(Room room, Transform parent, RoomTemplate template)
+    private void RebuildDoorStructures(Room room, Transform roomRoot, RoomTilesetSO tileset)
     {
         if (roomDoorStructureBuilder == null)
             return;
 
-        roomDoorStructureBuilder.Build(room, parent, template, doorPrefab);
+        roomDoorStructureBuilder.Rebuild(room, roomRoot, tileset);
     }
 
     private static void ClearContainerChildren(Transform parent)

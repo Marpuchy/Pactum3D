@@ -21,7 +21,7 @@ public sealed class RoomWallStructureBuilder : MonoBehaviour
 
     public float WallHeight => Mathf.Max(0.1f, wallHeight);
 
-    public void Rebuild(Room room, Transform roomRoot, RoomTemplate template)
+    public void Rebuild(Room room, Transform roomRoot, RoomTilesetSO tileset)
     {
         if (roomRoot == null)
             return;
@@ -45,7 +45,7 @@ public sealed class RoomWallStructureBuilder : MonoBehaviour
         if (buildOnlyForXZProjection && !worldSpaceSettings.UsesXZPlane)
             return;
 
-        Sprite sharedWallSprite = ResolveSharedWallSprite(template);
+        Sprite sharedWallSprite = ResolveSharedWallSprite(tileset);
         HashSet<Vector2Int> doorPositions = CollectDoorPositions(room);
 
         for (int x = 0; x < room.Width; x++)
@@ -116,16 +116,12 @@ public sealed class RoomWallStructureBuilder : MonoBehaviour
         return positions;
     }
 
-    private static Sprite ResolveSharedWallSprite(RoomTemplate template)
+    private static Sprite ResolveSharedWallSprite(RoomTilesetSO tileset)
     {
-        if (template == null)
+        if (tileset == null)
             return null;
 
-        return ExtractSprite(template.wallTile) ??
-               ExtractSprite(template.wallBottom) ??
-               ExtractSprite(template.wallTop) ??
-               ExtractSprite(template.wallLeft) ??
-               ExtractSprite(template.wallRight);
+        return ExtractSprite(tileset.WallTile);
     }
 
     private static Sprite ExtractSprite(TileBase tile)

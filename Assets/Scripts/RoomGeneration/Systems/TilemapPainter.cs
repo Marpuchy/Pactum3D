@@ -11,31 +11,18 @@ public class TilemapPainter
     private readonly Tilemap wallFrontTilemap;
     private readonly bool useLayeredVisuals;
     private readonly int foregroundWallRows;
-
+    private readonly TileBase floorTile;
+    private readonly TileBase wallTile;
+    private readonly TileBase sharedDoorTile;
     private readonly Dictionary<CellType, TileBase> tileMap;
     private readonly HashSet<CellType> prefabCellTypes;
-    private readonly TileBase floorTile;
-    private readonly TileBase wallFallback;
-    private readonly TileBase wallTop;
-    private readonly TileBase wallBottom;
-    private readonly TileBase wallLeft;
-    private readonly TileBase wallRight;
-    private readonly TileBase wallTopLeft;
-    private readonly TileBase wallTopRight;
-    private readonly TileBase wallBottomLeft;
-    private readonly TileBase wallBottomRight;
-    private readonly TileBase doorUpTile;
-    private readonly TileBase doorDownTile;
-    private readonly TileBase doorLeftTile;
-    private readonly TileBase doorRightTile;
-    private readonly Dictionary<Sprite, TileBase> runtimeSpriteTiles = new Dictionary<Sprite, TileBase>();
+    private readonly Dictionary<Sprite, TileBase> runtimeSpriteTiles = new();
     private readonly DoorController doorPrefabController;
 
     public TilemapPainter(
         Tilemap tilemap,
-        RoomTemplate template,
-        Room2_5DTilemapLayers layeredTilemaps = null,
-        GameObject doorPrefab = null)
+        RoomTilesetSO tileset,
+        Room2_5DTilemapLayers layeredTilemaps = null)
     {
         collisionTilemap = layeredTilemaps != null && layeredTilemaps.CollisionTilemap != null
             ? layeredTilemaps.CollisionTilemap
@@ -49,47 +36,37 @@ public class TilemapPainter
         foregroundWallRows = layeredTilemaps != null ? layeredTilemaps.ForegroundWallRows : 1;
         useVerticalWallSpritePresentation = RoomWorldSpaceSettings.Current != null && RoomWorldSpaceSettings.Current.UsesXZPlane;
 
-        floorTile = template.floorTile;
-        wallFallback = template.wallTile;
-        wallTop = template.wallTop;
-        wallBottom = template.wallBottom;
-        wallLeft = template.wallLeft;
-        wallRight = template.wallRight;
-        wallTopLeft = template.wallTopLeft;
-        wallTopRight = template.wallTopRight;
-        wallBottomLeft = template.wallBottomLeft;
-        wallBottomRight = template.wallBottomRight;
-        if (doorPrefab != null)
-            doorPrefabController = doorPrefab.GetComponent<DoorController>();
-        doorUpTile = CreateTileFromSprite(ResolveDoorSprite(template, DoorDirection.Up));
-        doorDownTile = CreateTileFromSprite(ResolveDoorSprite(template, DoorDirection.Down));
-        doorLeftTile = CreateTileFromSprite(ResolveDoorSprite(template, DoorDirection.Left));
-        doorRightTile = CreateTileFromSprite(ResolveDoorSprite(template, DoorDirection.Right));
-        prefabCellTypes = new HashSet<CellType>();
+        floorTile = tileset != null ? tileset.FloorTile : null;
+        wallTile = tileset != null ? tileset.WallTile : null;
 
+        if (tileset != null && tileset.DoorPrefab != null)
+            doorPrefabController = tileset.DoorPrefab.GetComponent<DoorController>();
+
+        sharedDoorTile = CreateTileFromSprite(ResolveDoorSprite(tileset));
+        prefabCellTypes = new HashSet<CellType>();
         tileMap = new Dictionary<CellType, TileBase>
         {
-            { CellType.Floor, template.floorTile },
-            { CellType.SpawnPoint, template.spawnPointTile }
+            { CellType.Floor, floorTile },
+            { CellType.SpawnPoint, tileset != null ? tileset.SpawnPointTile : null }
         };
 
-        if (template.specialTiles != null)
+        if (tileset == null || tileset.SpecialTiles == null)
+            return;
+
+        foreach (SpecialTileConfig config in tileset.SpecialTiles)
         {
-            foreach (SpecialTileConfig config in template.specialTiles)
+            if (config == null)
+                continue;
+
+            TileBase specialTile = ResolveSpecialTileTile(config);
+            if (specialTile != null)
             {
-                if (config == null)
-                    continue;
-
-                TileBase specialTile = ResolveSpecialTileTile(config);
-                if (specialTile != null)
-                {
-                    tileMap[config.type] = specialTile;
-                    continue;
-                }
-
-                if (config.specialTilePrefab != null)
-                    prefabCellTypes.Add(config.type);
+                tileMap[config.type] = specialTile;
+                continue;
             }
+
+            if (config.specialTilePrefab != null)
+                prefabCellTypes.Add(config.type);
         }
     }
 
@@ -106,7 +83,7 @@ public class TilemapPainter
 
                 if (type == CellType.Wall)
                 {
-                    PaintWall(room, x, y, pos);
+                    PaintWall(y, pos);
                     continue;
                 }
 
@@ -124,19 +101,15 @@ public class TilemapPainter
         PaintDoorBackgrounds(room);
     }
 
-    private void PaintWall(Room room, int x, int y, Vector3Int pos)
+    private void PaintWall(int y, Vector3Int pos)
     {
-        if (useVerticalWallSpritePresentation)
-            return;
-
-        TileBase wallTile = ResolveWallTile(room, x, y);
-        if (wallTile == null || collisionTilemap == null)
+        if (useVerticalWallSpritePresentation || wallTile == null || collisionTilemap == null)
             return;
 
         collisionTilemap.SetTile(pos, wallTile);
         collisionTilemap.SetColliderType(pos, Tile.ColliderType.Grid);
 
-        if (!useLayeredVisuals || useVerticalWallSpritePresentation)
+        if (!useLayeredVisuals)
             return;
 
         Tilemap targetVisualTilemap = ShouldPaintWallInForeground(y)
@@ -169,60 +142,33 @@ public class TilemapPainter
         }
     }
 
-    private TileBase ResolveWallTile(Room room, int x, int y)
-    {
-        bool left = x == 0;
-        bool right = x == room.Width - 1;
-        bool bottom = y == 0;
-        bool top = y == room.Height - 1;
-
-        if (left && bottom)
-            return wallBottomLeft ?? wallFallback;
-        if (right && bottom)
-            return wallBottomRight ?? wallFallback;
-        if (left && top)
-            return wallTopLeft ?? wallFallback;
-        if (right && top)
-            return wallTopRight ?? wallFallback;
-        if (top)
-            return wallTop ?? wallFallback;
-        if (bottom)
-            return wallBottom ?? wallFallback;
-        if (left)
-            return wallLeft ?? wallFallback;
-        if (right)
-            return wallRight ?? wallFallback;
-
-        return wallFallback;
-    }
-
     private void PaintDoorBackgrounds(Room room)
     {
-        if (useVerticalWallSpritePresentation)
+        if (useVerticalWallSpritePresentation || room.Doors == null || room.Doors.Count == 0)
             return;
 
-        if (room.Doors == null || room.Doors.Count == 0)
+        TileBase visibleDoorTile = sharedDoorTile ?? wallTile;
+        if (visibleDoorTile == null)
             return;
 
         foreach (DoorData door in room.Doors)
         {
             Vector3Int pos = new Vector3Int(door.Position.x, door.Position.y, 0);
-            TileBase doorTile = ResolveDoorTile(door.Direction);
-            TileBase wallTile = doorTile ?? ResolveWallTile(room, door.Position.x, door.Position.y);
 
             if (collisionTilemap != null)
             {
                 collisionTilemap.SetTile(pos, null);
                 collisionTilemap.SetColliderType(pos, Tile.ColliderType.None);
             }
-            Tilemap targetTilemap = useLayeredVisuals && !useVerticalWallSpritePresentation
+
+            Tilemap targetTilemap = useLayeredVisuals
                 ? ResolveDoorVisualTilemap()
                 : collisionTilemap;
 
-            if (wallTile == null || targetTilemap == null)
+            if (targetTilemap == null)
                 continue;
 
-            targetTilemap.SetTile(pos, wallTile);
+            targetTilemap.SetTile(pos, visibleDoorTile);
             targetTilemap.SetTileFlags(pos, TileFlags.None);
             targetTilemap.SetColliderType(pos, Tile.ColliderType.None);
         }
@@ -230,7 +176,7 @@ public class TilemapPainter
 
     private void ClearAllConfiguredTilemaps()
     {
-        HashSet<Tilemap> unique = new HashSet<Tilemap>();
+        HashSet<Tilemap> unique = new();
 
         AddIfValid(unique, collisionTilemap);
         AddIfValid(unique, floorTilemap);
@@ -273,48 +219,22 @@ public class TilemapPainter
         if (config.specialTileTile != null)
             return config.specialTileTile;
 
-        if (config.specialTilePrefab == null)
-            return null;
-
-        if (!ShouldCreateFallbackTileFromPrefab(config))
+        if (config.specialTilePrefab == null || !ShouldCreateFallbackTileFromPrefab(config))
             return null;
 
         SpriteRenderer renderer = config.specialTilePrefab.GetComponentInChildren<SpriteRenderer>(true);
         return CreateTileFromSprite(renderer != null ? renderer.sprite : null);
     }
 
-    private Sprite ResolveDoorSprite(RoomTemplate template, DoorDirection direction)
+    private Sprite ResolveDoorSprite(RoomTilesetSO tileset)
     {
-        Sprite templateSprite = direction switch
-        {
-            DoorDirection.Up => template.doorUp != null ? template.doorUp.closed : null,
-            DoorDirection.Down => template.doorDown != null ? template.doorDown.closed : null,
-            DoorDirection.Left => template.doorLeft != null ? template.doorLeft.closed : null,
-            DoorDirection.Right => template.doorRight != null ? template.doorRight.closed : null,
-            _ => null
-        };
+        if (tileset != null && tileset.Door != null && tileset.Door.closed != null)
+            return tileset.Door.closed;
 
-        if (templateSprite != null)
-            return templateSprite;
-
-        return doorPrefabController != null ? doorPrefabController.GetClosedSprite(direction) : null;
-    }
-
-    private TileBase ResolveDoorTile(DoorDirection direction)
-    {
-        switch (direction)
-        {
-            case DoorDirection.Up:
-                return doorUpTile;
-            case DoorDirection.Down:
-                return doorDownTile;
-            case DoorDirection.Left:
-                return doorLeftTile;
-            case DoorDirection.Right:
-                return doorRightTile;
-            default:
-                return null;
-        }
+        DoorSpriteSet sharedDoorSprites = doorPrefabController != null
+            ? doorPrefabController.ResolvePreferredSharedSprites()
+            : null;
+        return sharedDoorSprites != null ? sharedDoorSprites.closed : null;
     }
 
     private Tilemap ResolveDoorVisualTilemap()

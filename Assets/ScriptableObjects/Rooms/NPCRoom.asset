@@ -16,18 +16,7 @@ MonoBehaviour:
   maxSize: {x: 10, y: 10}
   minDoors: 4
   maxDoors: 4
-  doorUp:
-    closed: {fileID: 0}
-    open: {fileID: 0}
-  doorDown:
-    closed: {fileID: 0}
-    open: {fileID: 0}
-  doorLeft:
-    closed: {fileID: 0}
-    open: {fileID: 0}
-  doorRight:
-    closed: {fileID: 0}
-    open: {fileID: 0}
+  tileset: {fileID: 11400000, guid: d528c784e1a94046ad1379789a56422a, type: 2}
   itemsToSpawn: 0
   itemRarities: []
   coinsToSpawn: 0
@@ -59,20 +48,8 @@ MonoBehaviour:
   minEnemies: 0
   maxEnemies: 0
   enemySpawns: []
-  spawnPointTile: {fileID: 11400000, guid: 0281f1cb84735ba4d8167faf976d0926, type: 2}
-  floorTile: {fileID: 11400000, guid: b7c9d02a702c96d49aba16428b6f98b7, type: 2}
-  wallTile: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
-  wallTop: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
-  wallBottom: {fileID: 11400000, guid: 4254764f0d521f7419cdaabe4aa316b3, type: 2}
-  wallLeft: {fileID: 11400000, guid: 30499ac6d0da6624d8a7c663e6896e24, type: 2}
-  wallRight: {fileID: 11400000, guid: 0ca1f626572c28146b285acdee942329, type: 2}
-  wallTopLeft: {fileID: 11400000, guid: 828173dd6c9332c4d80217e31b99d596, type: 2}
-  wallTopRight: {fileID: 11400000, guid: 850c6cc86e1f39745b1ef52b557e96d6, type: 2}
-  wallBottomLeft: {fileID: 11400000, guid: 78a0234c658ea9a4ea6bf6071babbd52, type: 2}
-  wallBottomRight: {fileID: 11400000, guid: 93d4ee7918b9ca543b60f5cdd235c8e1, type: 2}
   specialTilePercentage: 0
-  specialTiles: []
-  roomTags: []
+  specialTileSpawns: []
   lootTags: []
   itemTag: {fileID: 0}
   coinTag: {fileID: 0}

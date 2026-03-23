@@ -16,6 +16,7 @@ MonoBehaviour:
   maxSize: {x: 10, y: 10}
   minDoors: 3
   maxDoors: 3
+  tileset: {fileID: 11400000, guid: d528c784e1a94046ad1379789a56422a, type: 2}
   itemsToSpawn: 0
   itemRarities: []
   chestToSpawn: 0
@@ -26,11 +27,7 @@ MonoBehaviour:
   minEnemies: 0
   maxEnemies: 0
   enemySpawns: []
-  spawnPointTile: {fileID: 11400000, guid: 8fb3132b7f9957c4388728e22cf25651, type: 2}
-  floorTile: {fileID: 11400000, guid: 0281f1cb84735ba4d8167faf976d0926, type: 2}
-  wallTile: {fileID: 11400000, guid: 335766fba544c5746b208b1b34f1d12d, type: 2}
   specialTilePercentage: 1
-  specialTiles:
-  - type: 5
-    specialTilePrefab: {fileID: 4905680764639183262, guid: e261e70d21dc8604fb5ca22504e97bc3, type: 3}
-    spawnPercentage: 1
+  specialTileSpawns:
+  - tileTag: {fileID: 11400000, guid: 0dd4bca669dc4a1097157f1c468a4955, type: 2}
+    spawnWeight: 1

@@ -174,7 +174,6 @@ MonoBehaviour:
   room3DGeometryBuilder: {fileID: 12348684}
   roomWallStructureBuilder: {fileID: 0}
   roomDoorStructureBuilder: {fileID: 0}
-  doorPrefab: {fileID: 5722507828685100508, guid: cae5dafdd819a5ec78f69f2f66744be6, type: 3}
   onRoomSpawnEvent: {fileID: 11400000, guid: d816ebaf6a64a3c5ab30aff26d0ec2a3, type: 2}
   enemyDeathEvent: {fileID: 11400000, guid: 9f720ade1b9a2dd0bb818ede26bf9586, type: 2}
   roomClearedEvent: {fileID: 11400000, guid: 3550446737ad2da85883933239ea0e8f, type: 2}

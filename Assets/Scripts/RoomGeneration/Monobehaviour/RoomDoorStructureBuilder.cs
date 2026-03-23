@@ -5,6 +5,7 @@ using UnityEngine.Rendering;
 [AddComponentMenu("Room/Door Structure Builder")]
 public sealed class RoomDoorStructureBuilder : MonoBehaviour
 {
+    private const string DoorsRootName = "Doors";
     private const string RuntimePhysicsHostName = "Runtime3DPhysics";
 
     [SerializeField] private RoomWorldSpaceSettings worldSpaceSettings;
@@ -13,9 +14,16 @@ public sealed class RoomDoorStructureBuilder : MonoBehaviour
     [SerializeField, Min(0.1f)] private float doorWidthFactor = 0.92f;
     [SerializeField] private bool useSharedVisualSetInXZ = true;
 
-    public void Build(Room room, Transform parent, RoomTemplate template, GameObject doorPrefab)
+    public void Rebuild(Room room, Transform roomRoot, RoomTilesetSO tileset)
     {
-        if (room == null || parent == null || doorPrefab == null)
+        if (room == null || roomRoot == null)
+            return;
+
+        Transform parent = GetOrCreateDoorsRoot(roomRoot);
+        ClearChildren(parent);
+
+        GameObject doorPrefab = tileset != null ? tileset.DoorPrefab : null;
+        if (doorPrefab == null)
             return;
 
         if (worldSpaceSettings == null)
@@ -36,7 +44,7 @@ public sealed class RoomDoorStructureBuilder : MonoBehaviour
 
             DoorController controller = instance.GetComponent<DoorController>();
             if (controller != null)
-                ConfigureDoorSprites(controller, template);
+                ConfigureDoorSprites(controller, tileset);
 
             DoorView view = instance.GetComponent<DoorView>();
             if (view != null)
@@ -55,30 +63,19 @@ public sealed class RoomDoorStructureBuilder : MonoBehaviour
         }
     }
 
-    private void ConfigureDoorSprites(DoorController controller, RoomTemplate template)
+    private void ConfigureDoorSprites(DoorController controller, RoomTilesetSO tileset)
     {
         if (controller == null)
             return;
 
-        if (worldSpaceSettings != null && worldSpaceSettings.UsesXZPlane && useSharedVisualSetInXZ)
-        {
-            DoorSpriteSet sharedSet = ResolveSharedDoorSpriteSet(template);
-            if (sharedSet == null)
-                sharedSet = controller.ResolvePreferredSharedSprites();
+        DoorSpriteSet sharedSet = ResolveSharedDoorSpriteSet(tileset);
+        if (sharedSet == null)
+            sharedSet = controller.ResolvePreferredSharedSprites();
 
-            controller.ConfigureSharedSprites(sharedSet, sharedSet != null);
-            if (sharedSet != null)
-                controller.ApplySpriteSets(sharedSet, sharedSet, sharedSet, sharedSet);
-
-            return;
-        }
-
-        controller.ConfigureSharedSprites(null, false);
-        controller.ApplySpriteSets(
-            template != null ? template.doorUp : null,
-            template != null ? template.doorDown : null,
-            template != null ? template.doorLeft : null,
-            template != null ? template.doorRight : null);
+        controller.ConfigureSharedSprites(
+            sharedSet,
+            worldSpaceSettings != null && worldSpaceSettings.UsesXZPlane && useSharedVisualSetInXZ && sharedSet != null);
+        controller.ApplySpriteSets(sharedSet, sharedSet, sharedSet, sharedSet);
     }
 
     private void ConfigureXZPresentation(GameObject instance, DoorDirection direction)
@@ -148,21 +145,12 @@ public sealed class RoomDoorStructureBuilder : MonoBehaviour
         return RoomStructurePlacementUtility.ResolveWallEdgePosition(worldSpaceSettings, room, door.Position, sideDoor);
     }
 
-    private static DoorSpriteSet ResolveSharedDoorSpriteSet(RoomTemplate template)
+    private static DoorSpriteSet ResolveSharedDoorSpriteSet(RoomTilesetSO tileset)
     {
-        if (template == null)
+        if (tileset == null)
             return null;
 
-        if (HasDoorSprites(template.doorUp))
-            return template.doorUp;
-        if (HasDoorSprites(template.doorDown))
-            return template.doorDown;
-        if (HasDoorSprites(template.doorLeft))
-            return template.doorLeft;
-        if (HasDoorSprites(template.doorRight))
-            return template.doorRight;
-
-        return null;
+        return HasDoorSprites(tileset.Door) ? tileset.Door : null;
     }
 
     private static bool HasDoorSprites(DoorSpriteSet set)
@@ -193,5 +181,22 @@ public sealed class RoomDoorStructureBuilder : MonoBehaviour
         host.transform.localRotation = Quaternion.Inverse(instance.transform.localRotation);
         host.transform.localScale = Vector3.one;
         return host;
+    }
+
+    private static Transform GetOrCreateDoorsRoot(Transform roomRoot)
+    {
+        Transform existing = roomRoot.Find(DoorsRootName);
+        if (existing != null)
+            return existing;
+
+        GameObject root = new GameObject(DoorsRootName);
+        root.transform.SetParent(roomRoot, false);
+        return root.transform;
+    }
+
+    private static void ClearChildren(Transform parent)
+    {
+        for (int i = parent.childCount - 1; i >= 0; i--)
+            Object.Destroy(parent.GetChild(i).gameObject);
     }
 }

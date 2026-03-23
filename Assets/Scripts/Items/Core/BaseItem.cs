@@ -19,16 +19,16 @@ public class BaseItem : IItem, IWeapon, IArmor, IConsumable, IItemDataProvider
     public ItemDataSO Data => data;
 
     public float Damage =>
-        data.WeaponStats != null ? data.WeaponStats.damage : 0f;
+        data.WeaponStats != null ? data.WeaponStats.Damage : 0f;
 
     public float AttackSpeed =>
-        data.WeaponStats != null ? data.WeaponStats.attackSpeed : 0f;
+        data.WeaponStats != null ? data.WeaponStats.AttackSpeed : 0f;
 
     public float Defense =>
-        data.ArmorStats != null ? data.ArmorStats.defense : 0f;
+        data.ArmorStats != null ? data.ArmorStats.Defense : 0f;
 
     public float HealthBonus =>
-        data.ArmorStats != null ? data.ArmorStats.healthBonus : 0f;
+        data.ArmorStats != null ? data.ArmorStats.HealthBonus : 0f;
 
     public int Charges { get; }
     public float Cooldown { get; }

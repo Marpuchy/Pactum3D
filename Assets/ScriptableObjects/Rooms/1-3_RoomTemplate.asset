@@ -16,18 +16,7 @@ MonoBehaviour:
   maxSize: {x: 20, y: 20}
   minDoors: 2
   maxDoors: 3
-  doorUp:
-    closed: {fileID: 0}
-    open: {fileID: 0}
-  doorDown:
-    closed: {fileID: 0}
-    open: {fileID: 0}
-  doorLeft:
-    closed: {fileID: 0}
-    open: {fileID: 0}
-  doorRight:
-    closed: {fileID: 0}
-    open: {fileID: 0}
+  tileset: {fileID: 11400000, guid: d528c784e1a94046ad1379789a56422a, type: 2}
   itemsToSpawn: 2
   itemRarities:
   - rarity: {fileID: 11400000, guid: 7fa1abbf4b276834cadad3c8b60443a0, type: 2}
@@ -54,11 +43,7 @@ MonoBehaviour:
   optionalPactNpcSpawnChance: 0.5
   otherNpcSpawns: []
   otherNpcSpawnChance: 0
-  itemSpawns:
-  - itemData: {fileID: 11400000, guid: 7653b0a541e82669ba255ed75111e49e, type: 2}
-    prefabOverride: {fileID: 8439460027181728471, guid: b38e12ddffa56d5cbb43b1df02fbdfd4, type: 3}
-    minAmount: 1
-    maxAmount: 1
+  itemSpawns: []
   minEnemies: 2
   maxEnemies: 2
   enemySpawns:
@@ -72,29 +57,12 @@ MonoBehaviour:
     spawnWeight: 1
     minAmount: 0
     maxAmount: 0
-  spawnPointTile: {fileID: 11400000, guid: 0281f1cb84735ba4d8167faf976d0926, type: 2}
-  floorTile: {fileID: 11400000, guid: b7c9d02a702c96d49aba16428b6f98b7, type: 2}
-  wallTile: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
-  wallTop: {fileID: 11400000, guid: 0df478faee862874eaad2491d5327818, type: 2}
-  wallBottom: {fileID: 11400000, guid: 4254764f0d521f7419cdaabe4aa316b3, type: 2}
-  wallLeft: {fileID: 11400000, guid: 30499ac6d0da6624d8a7c663e6896e24, type: 2}
-  wallRight: {fileID: 11400000, guid: 0ca1f626572c28146b285acdee942329, type: 2}
-  wallTopLeft: {fileID: 11400000, guid: 828173dd6c9332c4d80217e31b99d596, type: 2}
-  wallTopRight: {fileID: 11400000, guid: 850c6cc86e1f39745b1ef52b557e96d6, type: 2}
-  wallBottomLeft: {fileID: 11400000, guid: 78a0234c658ea9a4ea6bf6071babbd52, type: 2}
-  wallBottomRight: {fileID: 11400000, guid: 93d4ee7918b9ca543b60f5cdd235c8e1, type: 2}
   specialTilePercentage: 0.097
-  specialTiles:
-  - type: 7
-    specialTilePrefab: {fileID: 4905680764639183262, guid: 170115d932873d85b9f12c15aac14559, type: 3}
-    spawnPercentage: 1
-    tags: []
-  - type: 4
-    specialTilePrefab: {fileID: 5304563030024963202, guid: b6613c80bb17cad47af9fb6f87c9bdb0, type: 3}
-    spawnPercentage: 1
-    tags: []
-  roomTags:
-  - {fileID: 11400000, guid: dd43cd80751be0941be59ac9cca07df7, type: 2}
+  specialTileSpawns:
+  - tileTag: {fileID: 11400000, guid: 69d2229fa9f849cdadd4ddda0751f7d8, type: 2}
+    spawnWeight: 1
+  - tileTag: {fileID: 11400000, guid: 75124dab46544a098d7e4f70a9d2d6af, type: 2}
+    spawnWeight: 1
   lootTags: []
   itemTag: {fileID: 0}
   coinTag: {fileID: 0}

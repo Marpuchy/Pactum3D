@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -197,17 +198,11 @@ public sealed class ItemStatsTooltip : MonoBehaviour
         {
             case ItemType.Weapon:
                 if (data.WeaponStats != null)
-                {
-                    AppendStat(sb, "Damage", data.WeaponStats.damage, "0");
-                    AppendStat(sb, "Attack Speed", data.WeaponStats.attackSpeed, "0.00");
-                }
+                    AppendEquipmentStats(sb, data.WeaponStats.Modifiers);
                 break;
             case ItemType.Armor:
                 if (data.ArmorStats != null)
-                {
-                    AppendStat(sb, "Defense", data.ArmorStats.defense, "0");
-                    AppendStat(sb, "Health Bonus", data.ArmorStats.healthBonus, "0");
-                }
+                    AppendEquipmentStats(sb, data.ArmorStats.Modifiers);
                 break;
             case ItemType.Consumable:
                 if (data.ConsumableStats != null)
@@ -222,6 +217,28 @@ public sealed class ItemStatsTooltip : MonoBehaviour
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendEquipmentStats(StringBuilder sb, IReadOnlyList<ItemStatModifierEntry> modifiers)
+    {
+        if (modifiers == null || modifiers.Count == 0)
+            return;
+
+        for (int i = 0; i < modifiers.Count; i++)
+        {
+            ItemStatModifierEntry modifier = modifiers[i];
+            if (modifier == null || StatModifierFactory.IsNoOp(modifier.Operation, modifier.Value))
+                continue;
+
+            string label = HumanizeStatType(modifier.StatType);
+            string value = modifier.Operation == StatModifierOperation.Multiply
+                ? $"x{modifier.Value:0.##}"
+                : modifier.Value >= 0f
+                    ? $"+{modifier.Value:0.##}"
+                    : modifier.Value.ToString("0.##");
+
+            sb.Append(label).Append(": ").Append(value).Append('\n');
+        }
     }
 
     private static void AppendStat(StringBuilder sb, string label, float value, string format)
@@ -265,6 +282,21 @@ public sealed class ItemStatsTooltip : MonoBehaviour
         }
 
         sb.Append('\n');
+    }
+
+    private static string HumanizeStatType(StatType statType)
+    {
+        switch (statType)
+        {
+            case StatType.ShieldArmor:
+                return "Armor";
+            case StatType.MaxSpeed:
+                return "Speed";
+            case StatType.AttackLockTime:
+                return "Attack Lock Time";
+            default:
+                return PactDescriptionFormatter.HumanizeEnum(statType);
+        }
     }
 
     public static ItemStatsTooltip Ensure(ItemStatsTooltip existing, Canvas targetCanvas)

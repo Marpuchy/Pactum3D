@@ -16,17 +16,17 @@ public class SpecialTileSpawner
     private readonly Transform container;
     private readonly RoomWorldSpaceSettings worldSpaceSettings;
 
-    public SpecialTileSpawner(RoomTemplate template, Transform roomRoot, RoomWorldSpaceSettings worldSpaceSettings = null)
+    public SpecialTileSpawner(RoomTilesetSO tileset, Transform roomRoot, RoomWorldSpaceSettings worldSpaceSettings = null)
     {
         prefabs = new Dictionary<CellType, GameObject>();
         tileBackedTypes = new HashSet<CellType>();
         container = GetOrCreateContainer(roomRoot);
         this.worldSpaceSettings = worldSpaceSettings;
 
-        if (template == null || template.specialTiles == null)
+        if (tileset == null || tileset.SpecialTiles == null)
             return;
 
-        foreach (SpecialTileConfig config in template.specialTiles)
+        foreach (SpecialTileConfig config in tileset.SpecialTiles)
         {
             if (config == null)
                 continue;

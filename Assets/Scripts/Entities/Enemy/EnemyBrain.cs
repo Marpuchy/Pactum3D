@@ -14,6 +14,7 @@ public class EnemyBrain : MonoBehaviour
     [SerializeField] private CharacterStatResolver statResolver;
     [SerializeField] private bool chasePlayer = true;
     [SerializeField] private bool autoDisableChaseForRanged = true;
+    [SerializeField, Min(0f)] private float attackRangeHysteresis = 0.3f;
 
     [Header("Shadow")]
     [SerializeField] private float shadowGroundOffset = 0.03f;
@@ -38,6 +39,7 @@ public class EnemyBrain : MonoBehaviour
     private float currentAttackRange;
     private float nextNavMeshRebindTime;
     private RoomWorldSpaceSettings worldSpaceSettings;
+    private bool isHoldingAttackPosition;
 
     private void Awake()
     {
@@ -119,18 +121,19 @@ public class EnemyBrain : MonoBehaviour
         }
 
         Vector2 toPlayerFromBody = ToPlanar(player.position - transform.position);
-        UpdateMeleeAttackOrigin(toPlayerFromBody);
+        UpdateMeleeAttackOrigin(ResolveFacingDirection(toPlayerFromBody));
         float distance = GetPlanarDistance(transform.position, player.position);
+        UpdateAttackStandoffState(distance);
 
         // =========================
         // CHASE
         // =========================
-        bool shouldChase = ShouldChasePlayer();
-        if (distance > currentAttackRange && shouldChase)
+        bool shouldChase = ShouldChasePlayer() && !isHoldingAttackPosition;
+        if (shouldChase)
         {
             agent.isStopped = false;
             agent.SetDestination(player.position);
-            UpdateMeleeAttackOrigin(ToPlanar(agent.velocity));
+            UpdateMeleeAttackOrigin(ResolveFacingDirection(ToPlanar(agent.velocity)));
             animatorDriver.SetMoveVelocity(ToPlanar(agent.velocity));
         }
         else
@@ -146,33 +149,15 @@ public class EnemyBrain : MonoBehaviour
         }
     }
 
-    private Vector3 GetAttackOriginPosition()
-    {
-        if (TryGetComponent(out EnemyAttackPublisher rangedAttackPublisher))
-        {
-            Transform rangedOrigin = rangedAttackPublisher.Origin;
-            if (rangedOrigin != null)
-                return rangedOrigin.position;
-        }
-
-        if (attackOrigin == null)
-        {
-            AttackHitbox meleeHitbox = GetComponentInChildren<AttackHitbox>(true);
-            attackOrigin = meleeHitbox != null ? meleeHitbox.transform : transform;
-            CacheMeleeHitbox(attackOrigin);
-        }
-
-        return attackOrigin.position;
-    }
-
     private void FaceTowardsPlayer()
     {
         if (player == null)
             return;
 
-        Vector2 toPlayer = ToPlanar(player.position - GetAttackOriginPosition());
-        UpdateMeleeAttackOrigin(toPlayer);
-        animatorDriver.FaceDirection(toPlayer);
+        Vector2 toPlayer = ToPlanar(player.position - transform.position);
+        Vector2 facing = ResolveFacingDirection(toPlayer);
+        UpdateMeleeAttackOrigin(facing);
+        animatorDriver.FaceDirection(facing);
     }
 
     private void HandleStatsChanged()
@@ -328,6 +313,29 @@ public class EnemyBrain : MonoBehaviour
             return false;
 
         return true;
+    }
+
+    private Vector2 ResolveFacingDirection(Vector2 direction)
+    {
+        if (animatorDriver == null)
+            return direction;
+
+        return animatorDriver.ResolveFacingDirection(direction);
+    }
+
+    private void UpdateAttackStandoffState(float distanceToPlayer)
+    {
+        float enterDistance = Mathf.Max(0f, currentAttackRange);
+        float exitDistance = enterDistance + Mathf.Max(0f, attackRangeHysteresis);
+
+        if (distanceToPlayer <= enterDistance)
+        {
+            isHoldingAttackPosition = true;
+            return;
+        }
+
+        if (distanceToPlayer >= exitDistance)
+            isHoldingAttackPosition = false;
     }
 
     private void ConfigureRuntimeMovementAuthority(bool usesXZPlane)

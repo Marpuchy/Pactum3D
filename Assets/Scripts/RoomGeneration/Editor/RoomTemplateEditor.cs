@@ -12,13 +12,21 @@ public sealed class RoomTemplateEditor : Editor
         var rt = (RoomTemplate)target;
 
         EditorGUILayout.Space();
+        if (rt.Tileset == null)
+        {
+            EditorGUILayout.HelpBox("This room template needs a RoomTilesetSO assigned.", MessageType.Warning);
+        }
+        else
+        {
+            EditorGUILayout.HelpBox($"Tileset: {rt.Tileset.name}", MessageType.Info);
+        }
 
         DrawNormalizedSection(
-            "Special Tiles Percentages (Normalized)",
-            rt.specialTiles,
-            e => e.spawnPercentage,
-            (e, v) => e.spawnPercentage = v,
-            e => e.type.ToString()
+            "Special Tile Weights (Normalized)",
+            rt.specialTileSpawns,
+            e => e.spawnWeight,
+            (e, v) => e.spawnWeight = v,
+            e => e != null && e.TileTag != null ? e.TileTag.TagName : "None"
         );
 
         DrawNormalizedSection(

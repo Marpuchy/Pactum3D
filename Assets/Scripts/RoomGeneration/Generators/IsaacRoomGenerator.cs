@@ -82,7 +82,8 @@ public class IsaacRoomGenerator : RoomGeneratorBase
 
     protected override void PlaceSpawns(Room room, RoomTemplate config)
     {
-        if (config.specialTiles == null || config.specialTiles.Count == 0)
+        List<RuntimeSpecialTileSpawnEntry> validSpecialTiles = CollectValidSpecialTileEntries(config);
+        if (validSpecialTiles.Count == 0)
             return;
 
         List<Vector2Int> freeTiles = GetAllFreeFloorTiles(room);
@@ -92,12 +93,13 @@ public class IsaacRoomGenerator : RoomGeneratorBase
 
         float density = config.specialTilePercentage;
         RoomStatsProvider roomProvider = PactManager.Instance != null ? PactManager.Instance.Rooms : null;
+        IReadOnlyList<GameplayTag> roomTags = ResolveRoomTags(config);
         if (roomProvider != null)
         {
             float densityMultiplier = roomProvider.Get(
                 RoomParamType.SpecialTileDensityMultiplier,
                 1f,
-                config.roomTags);
+                roomTags);
             density = Mathf.Clamp01(density * Mathf.Max(0f, densityMultiplier));
         }
 
@@ -115,22 +117,22 @@ public class IsaacRoomGenerator : RoomGeneratorBase
             if (!CanPlaceSpecialTile(room, pos))
                 continue;
 
-            var configEntry = GetWeightedSpecial(config.specialTiles, roomProvider, config.roomTags);
-            if (configEntry == null)
+            RuntimeSpecialTileSpawnEntry configEntry = GetWeightedSpecial(validSpecialTiles, roomProvider, roomTags);
+            if (!configEntry.IsValid)
                 continue;
 
-            room.Grid[pos.x, pos.y] = configEntry.type;
+            room.Grid[pos.x, pos.y] = configEntry.Type;
             placed++;
 
-            if (configEntry.type == CellType.Lava)
+            if (configEntry.Type == CellType.Lava)
                 placedLava++;
         }
 
         TryPlaceAdditionalLavaTiles(room, config, freeTiles, placedLava, roomProvider);
     }
     
-    private SpecialTileConfig GetWeightedSpecial(
-        List<SpecialTileConfig> list,
+    private RuntimeSpecialTileSpawnEntry GetWeightedSpecial(
+        IReadOnlyList<RuntimeSpecialTileSpawnEntry> list,
         RoomStatsProvider provider,
         IReadOnlyList<GameplayTag> baseTags)
     {
@@ -140,15 +142,15 @@ public class IsaacRoomGenerator : RoomGeneratorBase
 
         for (int i = 0; i < list.Count; i++)
         {
-            SpecialTileConfig entry = list[i];
-            if (entry == null)
+            RuntimeSpecialTileSpawnEntry entry = list[i];
+            if (!entry.IsValid)
                 continue;
 
-            float weight = entry.spawnPercentage;
+            float weight = entry.Weight;
             if (provider != null)
             {
-                IReadOnlyList<GameplayTag> tags = BuildTags(baseTags, entry.tags, tagBuffer);
-                if (entry.type == CellType.Lava)
+                IReadOnlyList<GameplayTag> tags = BuildTags(baseTags, entry.Tags, tagBuffer);
+                if (entry.Type == CellType.Lava)
                 {
                     float multiplier = provider.Get(RoomParamType.LavaWeightMultiplier, 1f, tags);
                     if (multiplier < 1f)
@@ -161,14 +163,14 @@ public class IsaacRoomGenerator : RoomGeneratorBase
         }
 
         if (total <= 0f)
-            return null;
+            return default;
 
         float roll = Random.value * total;
         float current = 0f;
 
         for (int i = 0; i < list.Count; i++)
         {
-            if (weights[i] <= 0f || list[i] == null)
+            if (weights[i] <= 0f || !list[i].IsValid)
                 continue;
 
             current += weights[i];
@@ -178,11 +180,11 @@ public class IsaacRoomGenerator : RoomGeneratorBase
 
         for (int i = list.Count - 1; i >= 0; i--)
         {
-            if (list[i] != null && weights[i] > 0f)
+            if (list[i].IsValid && weights[i] > 0f)
                 return list[i];
         }
 
-        return null;
+        return default;
     }
 
     private void TryPlaceAdditionalLavaTiles(
@@ -195,11 +197,14 @@ public class IsaacRoomGenerator : RoomGeneratorBase
         if (room == null || config == null || freeTiles == null || freeTiles.Count == 0 || provider == null)
             return;
 
-        List<SpecialTileConfig> lavaEntries = CollectSpecialTilesByType(config.specialTiles, CellType.Lava);
+        IReadOnlyList<GameplayTag> roomTags = ResolveRoomTags(config);
+        List<RuntimeSpecialTileSpawnEntry> lavaEntries = CollectSpecialTilesByType(
+            CollectValidSpecialTileEntries(config),
+            CellType.Lava);
         if (lavaEntries.Count == 0)
             return;
 
-        float lavaMultiplier = ResolveHighestLavaMultiplier(lavaEntries, provider, config.roomTags);
+        float lavaMultiplier = ResolveHighestLavaMultiplier(lavaEntries, provider, roomTags);
         if (lavaMultiplier <= 1f)
             return;
 
@@ -237,27 +242,27 @@ public class IsaacRoomGenerator : RoomGeneratorBase
             if (!CanPlaceSpecialTile(room, pos))
                 continue;
 
-            SpecialTileConfig lavaConfig = GetWeightedSpecial(lavaEntries, provider, config.roomTags);
-            if (lavaConfig == null)
+            RuntimeSpecialTileSpawnEntry lavaConfig = GetWeightedSpecial(lavaEntries, provider, roomTags);
+            if (!lavaConfig.IsValid)
                 continue;
 
-            room.Grid[pos.x, pos.y] = lavaConfig.type;
+            room.Grid[pos.x, pos.y] = lavaConfig.Type;
             extraLavaToPlace--;
         }
     }
 
-    private static List<SpecialTileConfig> CollectSpecialTilesByType(
-        List<SpecialTileConfig> list,
+    private static List<RuntimeSpecialTileSpawnEntry> CollectSpecialTilesByType(
+        IReadOnlyList<RuntimeSpecialTileSpawnEntry> list,
         CellType type)
     {
-        var result = new List<SpecialTileConfig>();
+        var result = new List<RuntimeSpecialTileSpawnEntry>();
         if (list == null || list.Count == 0)
             return result;
 
         for (int i = 0; i < list.Count; i++)
         {
-            SpecialTileConfig entry = list[i];
-            if (entry != null && entry.type == type)
+            RuntimeSpecialTileSpawnEntry entry = list[i];
+            if (entry.IsValid && entry.Type == type)
                 result.Add(entry);
         }
 
@@ -265,7 +270,7 @@ public class IsaacRoomGenerator : RoomGeneratorBase
     }
 
     private static float ResolveHighestLavaMultiplier(
-        List<SpecialTileConfig> lavaEntries,
+        IReadOnlyList<RuntimeSpecialTileSpawnEntry> lavaEntries,
         RoomStatsProvider provider,
         IReadOnlyList<GameplayTag> roomTags)
     {
@@ -276,11 +281,11 @@ public class IsaacRoomGenerator : RoomGeneratorBase
         var tagBuffer = new List<GameplayTag>(8);
         for (int i = 0; i < lavaEntries.Count; i++)
         {
-            SpecialTileConfig entry = lavaEntries[i];
-            if (entry == null)
+            RuntimeSpecialTileSpawnEntry entry = lavaEntries[i];
+            if (!entry.IsValid)
                 continue;
 
-            IReadOnlyList<GameplayTag> tags = BuildTags(roomTags, entry.tags, tagBuffer);
+            IReadOnlyList<GameplayTag> tags = BuildTags(roomTags, entry.Tags, tagBuffer);
             float multiplier = provider.Get(RoomParamType.LavaWeightMultiplier, 1f, tags);
             highest = Mathf.Max(highest, Mathf.Max(0f, multiplier));
         }
@@ -380,7 +385,7 @@ public class IsaacRoomGenerator : RoomGeneratorBase
             float multiplier = roomProvider.Get(
                 RoomParamType.EnemyCountMultiplier,
                 1f,
-                config.roomTags);
+                ResolveRoomTags(config));
             totalEnemies = ScaleCountByMultiplier(totalEnemies, multiplier);
         }
 
@@ -591,6 +596,21 @@ public class IsaacRoomGenerator : RoomGeneratorBase
         public IReadOnlyList<GameplayTag> Tags { get; }
         public IReadOnlyList<GameplayTag> MovementTags { get; }
         public bool IsValid => Prefab != null;
+    }
+
+    private readonly struct RuntimeSpecialTileSpawnEntry
+    {
+        public RuntimeSpecialTileSpawnEntry(SpecialTileConfig definition, float weight)
+        {
+            Definition = definition;
+            Weight = weight;
+        }
+
+        public SpecialTileConfig Definition { get; }
+        public float Weight { get; }
+        public CellType Type => Definition != null ? Definition.type : CellType.Floor;
+        public IReadOnlyList<GameplayTag> Tags => Definition != null ? Definition.tags : null;
+        public bool IsValid => Definition != null && Weight > 0f;
     }
     
     protected override void PlaceChests(Room room, RoomTemplate config)
@@ -867,6 +887,82 @@ public class IsaacRoomGenerator : RoomGeneratorBase
             buffer.AddRange(entryTags);
 
         return buffer;
+    }
+
+    private static RoomTilesetSO ResolveTileset(RoomTemplate config)
+    {
+        return config != null ? config.Tileset : null;
+    }
+
+    private static IReadOnlyList<GameplayTag> ResolveRoomTags(RoomTemplate config)
+    {
+        RoomTilesetSO tileset = ResolveTileset(config);
+        return tileset != null ? tileset.Tags : null;
+    }
+
+    private static List<RuntimeSpecialTileSpawnEntry> CollectValidSpecialTileEntries(RoomTemplate config)
+    {
+        var valid = new List<RuntimeSpecialTileSpawnEntry>();
+        RoomTilesetSO tileset = ResolveTileset(config);
+        if (config == null || tileset == null || config.specialTileSpawns == null || config.specialTileSpawns.Count == 0)
+            return valid;
+
+        for (int i = 0; i < config.specialTileSpawns.Count; i++)
+        {
+            RoomSpecialTileSpawnEntry spawnEntry = config.specialTileSpawns[i];
+            if (spawnEntry == null || spawnEntry.spawnWeight <= 0f || spawnEntry.TileTag == null)
+                continue;
+
+            List<SpecialTileConfig> matchingDefinitions = CollectSpecialTileDefinitionsByTag(tileset.SpecialTiles, spawnEntry.TileTag);
+            if (matchingDefinitions.Count == 0)
+                continue;
+
+            float weightPerDefinition = spawnEntry.spawnWeight / matchingDefinitions.Count;
+            for (int matchIndex = 0; matchIndex < matchingDefinitions.Count; matchIndex++)
+                valid.Add(new RuntimeSpecialTileSpawnEntry(matchingDefinitions[matchIndex], weightPerDefinition));
+        }
+
+        return valid;
+    }
+
+    private static List<SpecialTileConfig> CollectSpecialTileDefinitionsByTag(
+        IReadOnlyList<SpecialTileConfig> definitions,
+        GameplayTag expectedTag)
+    {
+        var result = new List<SpecialTileConfig>();
+        if (definitions == null || expectedTag == null)
+            return result;
+
+        for (int i = 0; i < definitions.Count; i++)
+        {
+            SpecialTileConfig definition = definitions[i];
+            if (definition == null || !ContainsGameplayTag(definition.tags, expectedTag))
+                continue;
+
+            result.Add(definition);
+        }
+
+        return result;
+    }
+
+    private static bool ContainsGameplayTag(IReadOnlyList<GameplayTag> tags, GameplayTag expectedTag)
+    {
+        if (tags == null || expectedTag == null)
+            return false;
+
+        string expectedName = expectedTag.TagName;
+        for (int i = 0; i < tags.Count; i++)
+        {
+            GameplayTag candidate = tags[i];
+            if (candidate == null)
+                continue;
+
+            if (candidate == expectedTag ||
+                string.Equals(candidate.TagName, expectedName, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
 

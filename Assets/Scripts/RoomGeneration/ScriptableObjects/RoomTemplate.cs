@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Tilemaps;
 using System.Collections.Generic;
 using UnityEngine.Serialization;
 
@@ -14,11 +13,8 @@ public class RoomTemplate : ScriptableObject
     public int minDoors;
     public int maxDoors;
     
-    [Header("Door Sprites (Per Direction)")]
-    public DoorSpriteSet doorUp;
-    public DoorSpriteSet doorDown;
-    public DoorSpriteSet doorLeft;
-    public DoorSpriteSet doorRight;
+    [Header("Tileset")]
+    [SerializeField] private RoomTilesetSO tileset;
 
     [Header("Items")]
     public int itemsToSpawn = 0;
@@ -65,49 +61,17 @@ public class RoomTemplate : ScriptableObject
     public int maxEnemies;
     public List<EnemySpawnEntry> enemySpawns = new();
 
-
-    [Header("Base Tiles")] 
-    public TileBase spawnPointTile;
-    public TileBase floorTile;
-    [Tooltip("Fallback wall tile if a side/corner tile is not set")]
-    public TileBase wallTile;
-
-    [Header("Wall Tiles (Per Side/Corner)")]
-    public TileBase wallTop;
-    public TileBase wallBottom;
-    public TileBase wallLeft;
-    public TileBase wallRight;
-    public TileBase wallTopLeft;
-    public TileBase wallTopRight;
-    public TileBase wallBottomLeft;
-    public TileBase wallBottomRight;
-
-    [Header("Special Tile Spawning")]
+    [Header("Special Tiles")]
     [Range(0f, 1f)]
     public float specialTilePercentage = 0.33f;
-
-    public List<SpecialTileConfig> specialTiles;
+    public List<RoomSpecialTileSpawnEntry> specialTileSpawns = new();
 
     [Header("Pact Tags")]
-    public List<GameplayTag> roomTags = new();
     public List<GameplayTag> lootTags = new();
     public GameplayTag itemTag;
     public GameplayTag coinTag;
 
-}
-
-[System.Serializable]
-public class SpecialTileConfig
-{
-    public CellType type;
-    public TileBase specialTileTile;
-    public GameObject specialTilePrefab;
-
-    [Range(0f, 1f)]
-    [Tooltip("Relative probability of this special tile appearing within the overall percentage of special tiles")]
-    public float spawnPercentage = 0.5f;
-
-    public List<GameplayTag> tags = new();
+    public RoomTilesetSO Tileset => tileset;
 }
 
 [System.Serializable]
@@ -117,6 +81,17 @@ public class RoomItemSpawnEntry
     public GameObject prefabOverride;
     public int minAmount = 1;
     public int maxAmount = 1;
+}
+
+[System.Serializable]
+public class RoomSpecialTileSpawnEntry
+{
+    [SerializeField] private GameplayTag tileTag;
+
+    [Range(0f, 1f)]
+    public float spawnWeight = 0.5f;
+
+    public GameplayTag TileTag => tileTag;
 }
 
 [System.Serializable]
@@ -189,9 +164,3 @@ public class NpcSpawnEntry
         : (legacyNpcPrefab != null ? legacyNpcPrefab.name : "None");
 }
 
-[System.Serializable]
-public class DoorSpriteSet
-{
-    public Sprite closed;
-    public Sprite open;
-}

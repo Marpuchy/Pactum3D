@@ -435,29 +435,30 @@ public sealed class PlayerMiniInventory : MonoBehaviour, IItemCapabilityProvider
             case MiniInventorySlotType.Weapon:
                 if (data.WeaponStats == null)
                     return;
-                AddEquipmentModifier(StatType.AttackDamage, data.WeaponStats.damage, modifiers);
-                AddEquipmentModifier(StatType.AttackSpeed, data.WeaponStats.attackSpeed, modifiers);
+                AddEquipmentModifiers(data.WeaponStats.Modifiers, modifiers);
                 break;
             case MiniInventorySlotType.Armor:
                 if (data.ArmorStats == null)
                     return;
-                AddEquipmentModifier(StatType.ShieldArmor, data.ArmorStats.defense, modifiers);
-                AddEquipmentModifier(StatType.MaxHealth, data.ArmorStats.healthBonus, modifiers);
+                AddEquipmentModifiers(data.ArmorStats.Modifiers, modifiers);
                 break;
         }
     }
 
-    private void AddEquipmentModifier(StatType type, float amount, List<IStatModifier> modifiers)
+    private void AddEquipmentModifiers(IReadOnlyList<ItemStatModifierEntry> entries, List<IStatModifier> modifiers)
     {
-        if (statResolver == null)
+        if (statResolver == null || entries == null || modifiers == null)
             return;
 
-        if (Mathf.Approximately(amount, 0f))
-            return;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            IStatModifier modifier = StatModifierFactory.Create(entries[i]);
+            if (modifier == null)
+                continue;
 
-        var modifier = new FlatStatModifier(type, amount);
-        modifiers.Add(modifier);
-        statResolver.RegisterEquipmentModifier(modifier);
+            modifiers.Add(modifier);
+            statResolver.RegisterEquipmentModifier(modifier);
+        }
     }
 
     private void ClearEquipmentModifiers(List<IStatModifier> modifiers)
