@@ -37,6 +37,9 @@ public class CameraFollow2D : MonoBehaviour
     private Coroutine pendingRoomSpawnSnap;
     private IPlayerTransformProvider playerTransformProvider;
 
+    public Transform CurrentTarget => target;
+    public RoomWorldSpaceSettings WorldSpaceSettings => ResolveWorldSpaceSettings();
+
     [Inject]
     private void Construct([InjectOptional] IPlayerTransformProvider injectedPlayerTransformProvider)
     {
@@ -58,6 +61,7 @@ public class CameraFollow2D : MonoBehaviour
         ApplyProjectionModeIfNeeded();
         ApplyXZViewRotationIfNeeded();
         RefreshBounds();
+        EnsureWallOcclusionFade();
     }
 
     private void OnEnable()
@@ -354,5 +358,11 @@ public class CameraFollow2D : MonoBehaviour
             defaultXZFollowOffset.x,
             defaultXZCameraHeight,
             defaultXZFollowOffset.z);
+    }
+
+    private void EnsureWallOcclusionFade()
+    {
+        if (GetComponent<CameraWallOcclusionFade>() == null)
+            gameObject.AddComponent<CameraWallOcclusionFade>();
     }
 }

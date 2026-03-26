@@ -212,13 +212,17 @@ public class SpecialTileSpawner
 
         Transform existing = instance.transform.Find(PhysicsHostName);
         if (existing != null)
+        {
+            existing.gameObject.layer = instance.layer;
             return existing.gameObject;
+        }
 
         GameObject host = new GameObject(PhysicsHostName);
         host.transform.SetParent(instance.transform, false);
         host.transform.localPosition = Vector3.zero;
         host.transform.localRotation = Quaternion.Inverse(instance.transform.localRotation);
         host.transform.localScale = Vector3.one;
+        host.layer = instance.layer;
         return host;
     }
 

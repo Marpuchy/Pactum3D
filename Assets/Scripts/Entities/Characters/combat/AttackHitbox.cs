@@ -56,27 +56,34 @@ public class AttackHitbox : MonoBehaviour
         if (otherTransform == null)
             return;
 
-        GameObject targetObject = otherTransform.gameObject;
-        if (((1 << targetObject.layer) & targetLayer) == 0)
+        if (!IsInTargetLayer(otherTransform))
             return;
 
         GameObject attacker = attackComponent != null ? attackComponent.gameObject : gameObject;
+        GameObject targetObject = otherTransform.gameObject;
         if (targetObject == attacker || otherTransform.IsChildOf(attacker.transform))
+            return;
+
+        IBreakable breakable = FindInterfaceInParents<IBreakable>(otherTransform);
+        if (breakable != null && !IsPlayerAttacker(attacker))
             return;
 
         float damage = attackComponent != null ? attackComponent.GetDamage() : 1f;
 
         HealthComponent health = otherTransform.GetComponentInParent<HealthComponent>();
         if (health != null)
-            health.TakeDamage(damage, attacker);
-        else
         {
-            IDamageable damageable = FindInterfaceInParents<IDamageable>(otherTransform);
-            if (damageable != null)
-                damageable.TakeDamage(damage, attacker);
+            health.TakeDamage(damage, attacker);
+            return;
         }
 
-        IBreakable breakable = FindInterfaceInParents<IBreakable>(otherTransform);
+        IDamageable damageable = FindInterfaceInParents<IDamageable>(otherTransform);
+        if (damageable != null)
+        {
+            damageable.TakeDamage(damage, attacker);
+            return;
+        }
+
         if (breakable != null)
             breakable.ApplyDamage();
     }
@@ -97,5 +104,31 @@ public class AttackHitbox : MonoBehaviour
         }
 
         return null;
+    }
+
+    private bool IsInTargetLayer(Transform source)
+    {
+        Transform current = source;
+        while (current != null)
+        {
+            if (((1 << current.gameObject.layer) & targetLayer) != 0)
+                return true;
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
+    private static bool IsPlayerAttacker(GameObject attacker)
+    {
+        if (attacker == null)
+            return false;
+
+        if (attacker.CompareTag("Player"))
+            return true;
+
+        Transform root = attacker.transform.root;
+        return root != null && root.CompareTag("Player");
     }
 }

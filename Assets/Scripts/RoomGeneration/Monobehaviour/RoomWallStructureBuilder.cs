@@ -100,6 +100,7 @@ public sealed class RoomWallStructureBuilder : MonoBehaviour
 
         SpriteRenderer renderer = visual.AddComponent<SpriteRenderer>();
         renderer.sprite = sprite;
+        wall.AddComponent<CameraWallFadeTarget>();
 
         Room2_5DPresentationUtility.EnsureDepthSorting(wall, Room2_5DRenderPreset.Wall);
     }

@@ -15,6 +15,7 @@ public sealed class BreakableDamageAdapter : MonoBehaviour, IDamageable, INonCon
     public void TakeDamage(float damage, GameObject attacker)
     {
         if (damage <= 0f) return;
+        if (!IsPlayerAttacker(attacker)) return;
 
         breakable.ApplyDamage(Mathf.CeilToInt(1));
         DamageReceived?.Invoke(new DamageReceivedInfo(
@@ -22,5 +23,17 @@ public sealed class BreakableDamageAdapter : MonoBehaviour, IDamageable, INonCon
             1f,
             gameObject,
             attacker));
+    }
+
+    private static bool IsPlayerAttacker(GameObject attacker)
+    {
+        if (attacker == null)
+            return false;
+
+        if (attacker.CompareTag("Player"))
+            return true;
+
+        Transform root = attacker.transform.root;
+        return root != null && root.CompareTag("Player");
     }
 }

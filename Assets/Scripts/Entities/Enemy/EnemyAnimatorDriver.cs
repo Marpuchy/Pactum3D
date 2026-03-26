@@ -135,6 +135,9 @@ public class EnemyAnimatorDriver : MonoBehaviour
             rb.simulated = false;
         }
 
+        if (TryGetComponent(out EnemyGroundPlaneAnchor groundPlaneAnchor))
+            groundPlaneAnchor.ApplyAnchor();
+
         // 🧠 APAGAR CEREBRO
         DisableEnemyBrain();
     }
@@ -156,6 +159,7 @@ public class EnemyAnimatorDriver : MonoBehaviour
         {
             if (b == this) continue;
             if (b is EnemyAnimatorDriver) continue;
+            if (b is EnemyGroundPlaneAnchor) continue;
             if (b is XZSpriteVisualProxy) continue;
 
             b.enabled = false;

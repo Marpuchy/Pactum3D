@@ -14,6 +14,7 @@ public class RockTile : BreakableBase
 
     protected override void OnInitialized()
     {
+        StabilizePhysics();
         UpdateSprite();
     }
 
@@ -52,5 +53,27 @@ public class RockTile : BreakableBase
         Collider[] colliders3D = GetComponentsInChildren<Collider>();
         for (int i = 0; i < colliders3D.Length; i++)
             colliders3D[i].enabled = false;
+    }
+
+    private void StabilizePhysics()
+    {
+        Rigidbody rigidbody3D = GetComponent<Rigidbody>();
+        if (rigidbody3D != null)
+        {
+            rigidbody3D.useGravity = false;
+            rigidbody3D.isKinematic = true;
+            rigidbody3D.constraints = RigidbodyConstraints.FreezeAll;
+            rigidbody3D.linearVelocity = Vector3.zero;
+            rigidbody3D.angularVelocity = Vector3.zero;
+        }
+
+        Rigidbody2D rigidbody2D = GetComponent<Rigidbody2D>();
+        if (rigidbody2D != null)
+        {
+            rigidbody2D.gravityScale = 0f;
+            rigidbody2D.bodyType = RigidbodyType2D.Static;
+            rigidbody2D.linearVelocity = Vector2.zero;
+            rigidbody2D.angularVelocity = 0f;
+        }
     }
 }

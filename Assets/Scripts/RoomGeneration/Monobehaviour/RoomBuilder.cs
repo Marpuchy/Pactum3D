@@ -1330,6 +1330,7 @@ public class RoomBuilder : MonoBehaviour
                 Quaternion.identity,
                 parent);
             CharacterCombat3DUtility.EnsureHurtbox(instance, ResolveEnemyHurtboxOffset(effectiveTags));
+            EnsureEnemyGroundPlaneAnchor(instance, effectiveTags);
             EnsureEnemyShadow(instance);
             ConfigureSpawnedInstance(instance, Room2_5DRenderPreset.Prop);
 
@@ -1384,14 +1385,14 @@ public class RoomBuilder : MonoBehaviour
 
     private bool TryResolveEnemyAgentTypeId(IReadOnlyList<GameplayTag> tags, out int agentTypeId)
     {
-        bool isFlying = HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating");
+        bool isFlying = IsFlyingEnemy(tags);
         string agentTypeName = isFlying ? FlyingAgentTypeName : HumanoidAgentTypeName;
         return TryGetAgentTypeId(agentTypeName, out agentTypeId);
     }
 
     private float ResolveEnemyBaseOffset(IReadOnlyList<GameplayTag> tags)
     {
-        return HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating")
+        return IsFlyingEnemy(tags)
             ? flyingEnemyBaseOffset
             : groundedEnemyBaseOffset;
     }
@@ -1412,9 +1413,21 @@ public class RoomBuilder : MonoBehaviour
 
     private float ResolveEnemyHurtboxOffset(IReadOnlyList<GameplayTag> tags)
     {
-        return HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating")
+        return IsFlyingEnemy(tags)
             ? flyingEnemyHurtboxOffset
             : groundedEnemyHurtboxOffset;
+    }
+
+    private void EnsureEnemyGroundPlaneAnchor(GameObject instance, IReadOnlyList<GameplayTag> tags)
+    {
+        if (instance == null)
+            return;
+
+        EnemyGroundPlaneAnchor anchor = instance.GetComponent<EnemyGroundPlaneAnchor>();
+        if (anchor == null)
+            anchor = instance.AddComponent<EnemyGroundPlaneAnchor>();
+
+        anchor.ConfigureRuntime(IsFlyingEnemy(tags), worldSpaceSettings);
     }
 
     private void EnsureEnemyShadow(GameObject instance)
@@ -1442,6 +1455,11 @@ public class RoomBuilder : MonoBehaviour
             return baseTags;
 
         return manager.EnemyStats.GetEffectiveTags(baseTags);
+    }
+
+    private static bool IsFlyingEnemy(IReadOnlyList<GameplayTag> tags)
+    {
+        return HasTagNamed(tags, "Flying") || HasTagNamed(tags, "Floating");
     }
 
     private static bool HasTagNamed(IReadOnlyList<GameplayTag> tags, string expectedTag)
